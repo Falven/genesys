@@ -1,0 +1,39 @@
+{
+  "name": "genesys-monorepo",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Repository tooling for Genesys, a directory convention that generates native Temporal registration.",
+  "type": "module",
+  "scripts": {
+    "build": "turbo run build --filter='./packages/*'",
+    "build:genesys": "turbo run build --filter=genesys",
+    "dev": "turbo run dev",
+    "typecheck": "turbo run typecheck",
+    "lint": "oxlint --fix",
+    "lint:check": "oxlint",
+    "fmt": "oxfmt",
+    "fmt:check": "oxfmt --check",
+    "check:deps": "syncpack lint",
+    "fix:deps": "syncpack fix-mismatches && syncpack format",
+    "test": "pnpm test:unit && pnpm test:integration",
+    "test:unit": "turbo run test:unit",
+    "test:integration": "turbo run test:integration",
+    "changeset": "changeset",
+    "version-packages": "changeset version",
+    "prepare": "node ./scripts/install-git-hooks.mjs"
+  },
+  "devDependencies": {
+    "@changesets/cli": "3.0.3",
+    "@types/node": "catalog:",
+    "oxfmt": "0.78.0",
+    "oxlint": "1.93.0",
+    "syncpack": "15.3.3",
+    "turbo": "2.11.11",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  },
+  "engines": {
+    "node": ">=24"
+  },
+  "packageManager": "pnpm@12.17.0"
+}

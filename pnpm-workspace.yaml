@@ -1,0 +1,24 @@
+autoDedupe: true
+enableGlobalVirtualStore: false
+
+lockfile:
+  includeResolutionSettings: true
+
+packages:
+  - apps/*
+  - apps/docs/registry
+  - apps/fixtures/*
+  - apps/frameworks/*
+  - e2e/fixtures/*
+  - examples/*
+  - packages/*
+
+allowBuilds:
+  esbuild: true
+
+catalog:
+  "@types/node": "26.6.6"
+  typescript: "7.0.2"
+  vitest: "5.1.0"
+
+minimumReleaseAge: 2880
