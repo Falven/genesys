@@ -64,55 +64,51 @@ export function planAnalysis(context: AnalysisContext, parsed: RustAnalysis): An
   }
   const cwd = resolve(context.projectRoot, context.package.root);
   const output = resolve(context.projectRoot, artifactRoot(context), "target");
+  const { packageName } = parsed;
+  if (packageName === null) return { definitions, diagnostics, workers: [] };
   const workers = parsed.targets
     .filter((target) => target.kind === "bin")
-    .map((target) => ({
-      id: `${context.package.id}:bin:${target.name}`,
-      name: target.name,
-      language: "rust" as const,
-      packageId: context.package.id,
-      source: { path: target.path },
-      build: [
-        {
-          executable: "cargo",
-          args: [
-            "build",
-            "--manifest-path",
-            "Cargo.toml",
-            "--bin",
-            target.name,
-            "--target-dir",
-            output,
-            ...(target.requiredFeatures.length
-              ? ["--features", target.requiredFeatures.join(",")]
-              : []),
-          ],
-          cwd,
-        },
-      ],
-      start: {
-        executable: "cargo",
-        args: [
-          "run",
-          "--quiet",
-          "--manifest-path",
-          "Cargo.toml",
-          "--bin",
-          target.name,
-          "--target-dir",
-          output,
-          ...(target.requiredFeatures.length
-            ? ["--features", target.requiredFeatures.join(",")]
-            : []),
-          "--",
+    .map((target) => {
+      const production = context.mode === "production";
+      const selection = [
+        "--manifest-path",
+        "Cargo.toml",
+        "--bin",
+        target.name,
+        "--target-dir",
+        output,
+        ...(target.requiredFeatures.length
+          ? ["--features", target.requiredFeatures.join(",")]
+          : []),
+      ];
+      return {
+        id: `${context.package.id}:bin:${target.name}`,
+        name: target.name,
+        language: "rust" as const,
+        packageId: context.package.id,
+        source: { path: target.path },
+        build: [
+          {
+            executable: "cargo",
+            args: [
+              "build",
+              ...selection,
+              ...(production
+                ? ["--package", packageName, "--message-format=json-render-diagnostics"]
+                : []),
+            ],
+            cwd,
+          },
         ],
-        cwd,
-      },
-      readiness: {
-        state: "unavailable" as const,
-        description: nativeEvidence,
-        evidence: ["native-worker-heartbeat", "native-successful-task-poll"],
-      },
-    }));
+        ...(production
+          ? {}
+          : { start: { executable: "cargo", args: ["run", "--quiet", ...selection, "--"], cwd } }),
+        readiness: {
+          state: "unavailable" as const,
+          description: nativeEvidence,
+          evidence: ["native-worker-heartbeat", "native-successful-task-poll"],
+        },
+      };
+    });
   return { definitions, diagnostics, workers };
 }

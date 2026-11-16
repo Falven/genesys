@@ -44,14 +44,27 @@ export async function inspect(context: AnalysisContext): Promise<RustAnalysis> {
       timeout: 120_000,
       maxBuffer: 16 * 1024 * 1024,
     };
+    const version = await runTool({ ...invocation, executable: "rustc", args: ["-vV"] });
+    const host = /^host: (\S+)$/m.exec(version)?.[1];
+    if (!host) throw new Error("rustc did not report the analyzer's host target.");
+    const targetDir = join(directory, "target");
     await runTool({
       ...invocation,
       executable: "cargo",
-      args: ["build", "--locked", "--manifest-path", join(directory, "Cargo.toml")],
+      args: [
+        "build",
+        "--locked",
+        "--manifest-path",
+        join(directory, "Cargo.toml"),
+        "--target",
+        host,
+        "--target-dir",
+        targetDir,
+      ],
     });
     const executable = join(
-      directory,
-      "target",
+      targetDir,
+      host,
       "debug",
       `genesys-rust-analyzer${process.platform === "win32" ? ".exe" : ""}`,
     );

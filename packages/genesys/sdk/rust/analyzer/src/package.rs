@@ -4,6 +4,7 @@ use std::collections::BTreeSet;
 
 #[derive(Default)]
 pub(crate) struct Package {
+    pub(crate) name: String,
     pub(crate) targets: Vec<Target>,
     pub(crate) macro_crates: BTreeSet<String>,
     pub(crate) sdk: Option<String>,
@@ -12,7 +13,6 @@ pub(crate) struct Package {
 
 impl Package {
     pub(crate) fn inspect(input: &Input) -> Result<Option<Self>, String> {
-        let mut inspection = Self::default();
         let manifest_path = join(&input.root, "Cargo.toml");
         let manifest: toml::Value = input
             .sources
@@ -28,6 +28,10 @@ impl Package {
             .and_then(|v| v.as_str())
             .ok_or("Cargo package name is unavailable")?
             .to_owned();
+        let mut inspection = Self {
+            name: name.clone(),
+            ..Self::default()
+        };
         if let Some(table) = manifest.get("dependencies") {
             if let Some(deps) = table.as_table() {
                 for (alias, spec) in deps {
