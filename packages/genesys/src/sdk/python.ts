@@ -12,6 +12,7 @@ async function inspect(context: AnalysisContext) {
     input: JSON.stringify({
       projectRoot: context.projectRoot,
       package: context.package,
+      mode: context.mode,
       entries: context.entries,
       sources: Object.fromEntries(context.sources),
     }),
