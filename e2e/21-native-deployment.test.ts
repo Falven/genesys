@@ -160,9 +160,24 @@ test("published Go builds keep their launch files and settings across direct, hy
       const hostBuild = await readBuild(hostProject);
       const hostEndpoint = await temporalEndpoint();
       const server = fixture.start("temporal", ["server", "start-dev", ...hostEndpoint.serverArgs]);
-      await runAndStop(server, () =>
-        runHostWorker(fixture, hostBuild, hostEndpoint.address, hostEndpoint.namespace, "direct"),
-      );
+      await runAndStop(server, async () => {
+        const connection = Connection.lazy({
+          address: hostEndpoint.address,
+          connectTimeout: "30s",
+        });
+        try {
+          await connection.ensureConnected();
+          await runHostWorker(
+            fixture,
+            hostBuild,
+            hostEndpoint.address,
+            hostEndpoint.namespace,
+            "direct",
+          );
+        } finally {
+          await connection.close();
+        }
+      });
       await editAuthoredProject(hostProject);
 
       async function docker(args: readonly string[], timeout?: number) {

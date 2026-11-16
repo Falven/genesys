@@ -1,0 +1,155 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  schedule:
+    - cron: "23 7 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  package:
+    name: Check and pack the CLI
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm fmt:check
+      - run: pnpm check:deps
+      - run: pnpm exec oxlint packages e2e
+      - run: pnpm exec tsc --noEmit
+      - run: pnpm --filter @genesys/cli typecheck
+      - name: Build and pack the CLI
+        run: |
+          npm pack ./packages/genesys --json --pack-destination "$RUNNER_TEMP" > "$RUNNER_TEMP/cli-pack.json"
+          filename="$(jq -er '.[0].filename' "$RUNNER_TEMP/cli-pack.json")"
+          mv "$RUNNER_TEMP/$filename" "$RUNNER_TEMP/genesys-cli.tgz"
+          jq -r '.[0] | "\(.id) — \(.size) bytes packed, \(.unpackedSize) bytes unpacked"' \
+            "$RUNNER_TEMP/cli-pack.json" >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: genesys-cli
+          path: ${{ runner.temp }}/genesys-cli.tgz
+          if-no-files-found: error
+          overwrite: true
+
+  e2e:
+    name: E2E (${{ matrix.os }})
+    needs: package
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: Linux
+            runner: ubuntu-24.04
+          - os: macOS
+            runner: macos-15
+          - os: Windows
+            runner: windows-2025
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 60
+    env:
+      FULL_SUITE: ${{ matrix.os == 'Linux' && (github.event_name != 'pull_request' ||
+        (github.head_ref == 'changeset-release/main' && github.event.pull_request.head.repo.full_name == github.repository)) }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: "1.27.4"
+          cache: false
+      - uses: ./.github/actions/install-temporal
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: genesys-cli
+          path: ${{ runner.temp }}
+      - name: Select the CI tarball for integration tests
+        shell: bash
+        run: echo "GSYS_TEST_TARBALL=$RUNNER_TEMP/genesys-cli.tgz" >> "$GITHUB_ENV"
+      - run: pnpm install --frozen-lockfile
+      - if: env.FULL_SUITE == 'true'
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.15"
+      - if: env.FULL_SUITE == 'true'
+        uses: actions/setup-java@d1374f8ac74474200d16ef8ecee22c7ae7a51880 # v6.3.0
+        with:
+          distribution: temurin
+          java-version: "21"
+      - if: env.FULL_SUITE == 'true'
+        uses: gradle/actions/setup-gradle@50e97c2cd7a37755bbfafc9c5b7cafaece252f6e # v6.1.0
+        with:
+          gradle-version: "9.2.1"
+          cache-disabled: true
+      - if: env.FULL_SUITE == 'true'
+        uses: actions/setup-dotnet@0f4a354dd5547a28c70b7853dbd95d5b67886e73 # v6.1.0
+        with:
+          dotnet-version: 10.0.x
+      - if: env.FULL_SUITE == 'true'
+        uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962 # 2.40.0
+        with:
+          php-version: "8.4"
+          extensions: curl, sockets
+          tools: composer:2.11.2
+          coverage: none
+      - if: env.FULL_SUITE == 'true'
+        uses: ruby/setup-ruby@b3aaceaef7e0ee231b499e7b5f49c03fc1d32199 # v1.338.0
+        with:
+          ruby-version: "3.4"
+      - name: Install native SDK tools
+        if: env.FULL_SUITE == 'true'
+        run: |
+          rustup toolchain install 1.99.1 --profile minimal
+          echo "RUSTUP_TOOLCHAIN=1.99.1" >> "$GITHUB_ENV"
+          curl -fsSL --retry 3 -o "$RUNNER_TEMP/protoc.zip" \
+            https://github.com/protocolbuffers/protobuf/releases/download/v31.1/protoc-31.1-linux-x86_64.zip
+          echo "96553041f1a91ea0efee963cb16f462f5985b4d65365f3907414c360044d8065  $RUNNER_TEMP/protoc.zip" | sha256sum -c
+          unzip -q "$RUNNER_TEMP/protoc.zip" -d "$RUNNER_TEMP/protoc"
+          echo "PROTOC_INCLUDE=$RUNNER_TEMP/protoc/include" >> "$GITHUB_ENV"
+          echo "$RUNNER_TEMP/protoc/bin" >> "$GITHUB_PATH"
+          curl -fsSL --retry 3 -o "$RUNNER_TEMP/roadrunner.tar.gz" \
+            https://github.com/roadrunner-server/roadrunner/releases/download/v2025.1.5/roadrunner-2025.1.5-linux-amd64.tar.gz
+          echo "2fbe35dd02a2072e6f4c01b7ad0fca0e4a69b81e0942eac9a3d0927039edb619  $RUNNER_TEMP/roadrunner.tar.gz" | sha256sum -c
+          tar -xzf "$RUNNER_TEMP/roadrunner.tar.gz" -C "$RUNNER_TEMP"
+          echo "$RUNNER_TEMP/roadrunner-2025.1.5-linux-amd64" >> "$GITHUB_PATH"
+      - if: env.FULL_SUITE == 'true'
+        run: pnpm test:e2e
+      - if: env.FULL_SUITE != 'true' && matrix.os != 'Windows'
+        run: pnpm test:e2e 01-installed-go 19-owned-shutdown
+      - if: matrix.os == 'Windows'
+        run: pnpm test:e2e 23-windows-boundaries
+
+  required:
+    name: Required checks
+    if: always()
+    needs: [package, e2e]
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Require package and platform checks
+        env:
+          PACKAGE_RESULT: ${{ needs.package.result }}
+          E2E_RESULT: ${{ needs.e2e.result }}
+        run: test "$PACKAGE_RESULT" = success && test "$E2E_RESULT" = success

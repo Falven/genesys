@@ -15,7 +15,8 @@ source, build the Worker, and run it with a managed Temporal development server.
 
 ## Get the CLI
 
-If you have a Genesys package tarball, install it in your npm project.
+To install a released version in your npm project, run `npm install @genesys/cli`.
+If you have a Genesys package tarball, install it with the path to that file.
 
 ```bash
 npm install /absolute/path/to/genesys-cli.tgz

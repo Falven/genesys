@@ -2,12 +2,19 @@
   "name": "@genesys/cli",
   "version": "0.0.0",
   "description": "Native Temporal registration, versioned builds, and development supervision",
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Falven/genesys.git",
+    "directory": "packages/genesys"
+  },
   "bin": {
     "gsys": "dist/cli.js"
   },
   "files": [
     "dist",
     "README.md",
+    "CHANGELOG.md",
     "native",
     "sdk/dotnet/*.cs",
     "sdk/dotnet/*.csproj",
@@ -22,6 +29,9 @@
     "src/sdk/go/go.sum"
   ],
   "type": "module",
+  "publishConfig": {
+    "access": "public"
+  },
   "scripts": {
     "build": "tsc -p tsconfig.json && node scripts/package-docs.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit",

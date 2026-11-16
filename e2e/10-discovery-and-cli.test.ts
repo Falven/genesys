@@ -17,6 +17,11 @@ const jsConfig = JSON.stringify({
   include: ["**/*"],
 });
 
+const buildConfig = JSON.stringify({
+  compilerOptions: { allowJs: true, module: "NodeNext", rootDir: ".", outDir: "dist", types: [] },
+  include: ["temporal/**/*"],
+});
+
 test("inspect keeps nested discovery and package ownership without executing the application", async () => {
   await withFixture([], async (fixture) => {
     const application = "application with spaces";
@@ -256,17 +261,15 @@ test("installed commands keep complete inspect JSON on stdout and report invocat
     await writeProject(fixture.project, {
       "package.json": JSON.stringify({
         dependencies: { "@temporalio/worker": "1.25.0" },
-        scripts: { build: "node build.mjs" },
         main: worker,
       }),
+      "tsconfig.json": buildConfig,
       [workflow]: absentDependency,
       [worker]: 'console.log("Worker entrypoint");\n',
-      "build.mjs": 'await import("@temporalio/worker");\n',
     });
     const failedBuild = await fixture.gsys(["build"]);
     expect(failedBuild).toMatchObject({ code: 1, signal: null });
-    expect(failedBuild.stderr).toContain("Cannot find package '@temporalio/worker'");
-    expect(failedBuild.stderr).toMatch(/^gsys:.*npm failed \(1\)$/m);
+    expect(failedBuild.stderr).toContain("Install the application's TypeScript compiler");
     await expect(
       readFile(join(fixture.project, ".gsys/compile/manifest.json")),
     ).rejects.toMatchObject({ code: "ENOENT" });
@@ -325,12 +328,14 @@ test("build keeps native package logs off the published JSON stdout", async () =
   await withFixture([], async (fixture) => {
     await writeProject(fixture.project, {
       "package.json": JSON.stringify({
-        scripts: { build: "node build.mjs" },
         main: "temporal/workers/demo/start.mjs",
       }),
-      "tsconfig.json": jsConfig,
+      "tsconfig.json": buildConfig,
       "temporal/workers/demo/start.mjs": 'console.log("Worker entrypoint");\n',
-      "build.mjs": 'console.log("authored native build log");\n',
+      "node_modules/typescript/bin/tsc": `const { cpSync } = require("node:fs");
+cpSync("temporal", "dist/temporal", { recursive: true });
+console.log("native compiler log");
+`,
     });
     const build = await fixture.gsys(["build"]);
     expect(build).toMatchObject({ code: 0, signal: null });
@@ -339,9 +344,9 @@ test("build keeps native package logs off the published JSON stdout", async () =
     );
     assert(selected && typeof selected === "object" && "id" in selected);
     assert(typeof selected.id === "string");
-    expect(build.stdout.slice(0, 160)).not.toContain("authored native build log");
+    expect(build.stdout.slice(0, 160)).not.toContain("native compiler log");
     const printed: unknown = JSON.parse(build.stdout);
     expect(printed).toMatchObject({ schemaVersion: 1, id: selected.id });
-    expect(build.stderr).toContain("authored native build log");
+    expect(build.stderr).toContain("native compiler log");
   });
 }, 240_000);

@@ -4,6 +4,7 @@ const output = new URL("../dist/docs/", import.meta.url);
 await rm(output, { recursive: true, force: true });
 await cp(new URL("../../../docs/", import.meta.url), output, { recursive: true });
 await cp(new URL("../../../GLOSSARY.md", import.meta.url), new URL("GLOSSARY.md", output));
+await cp(new URL("../../../LICENSE", import.meta.url), new URL("../LICENSE", import.meta.url));
 
 const index = new URL("README.md", output);
 const content = await readFile(index, "utf8");

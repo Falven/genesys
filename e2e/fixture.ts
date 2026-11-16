@@ -1,6 +1,6 @@
 import { spawn } from "node:child_process";
 import { randomUUID } from "node:crypto";
-import { mkdir, mkdtemp, realpath, rm, writeFile } from "node:fs/promises";
+import { copyFile, mkdir, mkdtemp, realpath, rm, writeFile } from "node:fs/promises";
 import { createConnection, createServer } from "node:net";
 import { tmpdir } from "node:os";
 import { isAbsolute, join, relative, sep } from "node:path";
@@ -209,12 +209,22 @@ async function prepareFixture(
     }
   }
 
-  const filename = await required(
-    "npm",
-    ["pack", cliPackage, "--pack-destination", root, "--silent"],
-    { cwd: consumer },
-  );
-  const tarball = join(root, filename);
+  const suppliedTarball = process.env.GSYS_TEST_TARBALL;
+  let tarball: string;
+  if (suppliedTarball === undefined) {
+    const filename = await required(
+      "npm",
+      ["pack", cliPackage, "--pack-destination", root, "--silent"],
+      { cwd: consumer },
+    );
+    tarball = join(root, filename);
+  } else {
+    if (!isAbsolute(suppliedTarball)) {
+      throw new Error("GSYS_TEST_TARBALL must be an absolute path.");
+    }
+    tarball = join(root, "genesys-cli.tgz");
+    await copyFile(suppliedTarball, tarball);
+  }
   await required(
     "npm",
     ["install", "--no-audit", "--no-fund", "--no-save", "--package-lock=false", tarball],

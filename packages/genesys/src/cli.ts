@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { readFile } from "node:fs/promises";
 import { writeDiscovery } from "./discovery.js";
 
 import { analyzeProject } from "./sdk.js";
@@ -28,7 +29,18 @@ async function main(args: string[]): Promise<void> {
     return;
   }
   if (args.length === 1 && args[0] === "--version") {
-    process.stdout.write("0.0.0\n");
+    const manifest: unknown = JSON.parse(
+      await readFile(new URL("../package.json", import.meta.url), "utf8"),
+    );
+    if (
+      !manifest ||
+      typeof manifest !== "object" ||
+      !("version" in manifest) ||
+      typeof manifest.version !== "string"
+    ) {
+      throw new Error("The Genesys package manifest must contain a version.");
+    }
+    process.stdout.write(`${manifest.version}\n`);
     return;
   }
   if (args[0] === "dev") {

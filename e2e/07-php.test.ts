@@ -215,9 +215,9 @@ final class IndependentWorkflow
       expect(registrationCode.match(/registerActivity\(/g)).toHaveLength(1);
       expect(registrationCode).not.toContain("ExplicitWorkflow::class");
       expect(registrationCode).not.toContain("NexusProbe::class");
-      await expect(readFile(join(first.root, "composer-build-marker"), "utf8")).resolves.toBe(
-        "installed",
-      );
+      await expect(readFile(join(first.root, "composer-build-marker"))).rejects.toMatchObject({
+        code: "ENOENT",
+      });
 
       // The installed Worker API supplies the capability check for the exact
       // Composer snapshot that was used to build the application.
