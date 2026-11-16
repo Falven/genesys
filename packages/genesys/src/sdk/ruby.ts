@@ -27,7 +27,7 @@ export const rubyAdapter: NativeAdapter = {
     analysis.definitions = definitions.definitions;
     analysis.diagnostics.push(...definitions.diagnostics);
     instanceInputs.set(analysis, definitions.requiredInstances);
-    const workers = workerPrograms({
+    const workers = await workerPrograms({
       context,
       files,
       definitions: analysis.definitions,
