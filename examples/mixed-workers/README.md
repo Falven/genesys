@@ -52,13 +52,14 @@ warning. Python can report unresolved registration membership because the Worker
 calls a generated function. The native build is authoritative. An empty Python
 package initializer under `activities` can also report no static definitions.
 
-Both outputs share one versioned project. Go resolves its module dependencies
-from `go.mod` and `go.sum` and links the generated Workflow registration into the
-`orchestrator` executable. Python uses `venv` and `pip install .` in `enrichment/`
-to install the application and its dependencies. The build also compiles the
-generated Python registration. Dependency installation can execute native build
-code. Both SDK versions are pinned. The Python build backend and transitive
-dependencies follow pip's normal resolution because this example has no lockfile.
+Both outputs share one versioned project. Go resolves module dependencies from
+`go.mod` and checks their hashes against `go.sum`. It links the generated Workflow
+registration into the `orchestrator` executable. Python uses `venv` and
+`pip install .` in `enrichment/` to install the application and its dependencies.
+The build also compiles the generated Python registration. Dependency installation
+can execute native build code. Both SDK versions are pinned. The Python build
+backend and transitive dependencies follow pip's normal resolution because this
+example has no lockfile.
 
 Read the current selector once. Use its immutable `manifestPath` for both Workers.
 The manifest records their build and startup commands and their `nativeOutput`
@@ -172,7 +173,7 @@ coverage or version-retirement evidence keeps previous Workers and builds retain
 
 The CLI build and native mixed build passed on macOS arm64 with Go 1.27.4
 and Python 3.15.2. Inspection covered the immutable manifest and build metadata,
-the Go executable and linked registration symbols, and the Python registration,
+the Go executable and its compiled registration, and the Python registration,
 virtual environment, and installed application and dependencies.
 No tests, test harnesses, assertion-based checks, Worker startup, or Temporal
 Workflow executions were run. These checks do not establish runtime compatibility
