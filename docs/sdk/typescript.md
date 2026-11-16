@@ -52,7 +52,26 @@ Re-exporting the same implementation under the same identity is deduplicated. If
 
 Named `workers/<name>/` directories supply Worker candidates. The adapter prefers a package `main` or `bin` declaration that maps to a source or its native compiler output. Otherwise it considers top-level executable call sites. More than one candidate, or no candidate, produces an ambiguity diagnostic and no guessed startup command.
 
-An existing native `build` package script is used with the declared npm, pnpm, Yarn or Bun package manager. Without one, an emitting tsconfig and the application's installed TypeScript compiler produce a `node .../typescript/bin/tsc --build ...` command. No compiler is downloaded or substituted. Startup uses Node and the native emitted path, with the owning package as its working directory. Plain JavaScript can start directly. Custom bundlers, non-emitting TypeScript projects and unresolved outputs require the existing native startup override; no source loader is invented. Emitted paths outside the isolated project do not receive an automatic startup plan.
+`gsys dev` uses an existing native `build` script through npm, pnpm, Yarn or Bun. Without a script, it falls back to the package's installed compiler and an emitting tsconfig. A native startup override is available for development programs that require a custom bundler or source loader.
+
+## Production output
+
+`gsys build` runs the application's installed `node_modules/typescript/bin/tsc` directly with `--build --force` and the native `tsconfig.json`. It runs after registration generation. Compiler settings such as `rootDir`, `outDir`, module format and project references control the JavaScript output. The compiler and project must be installed within the selected workspace. A JavaScript entrypoint can run directly from the snapshot when its config does not emit it. A TypeScript entrypoint without supported JavaScript output fails the build with a source diagnostic.
+
+Install the application's dependencies first with its native package manager. The build copies the installed dependency trees and authored assets into the snapshot. It records the discovered `node_modules` locations, the entrypoint output paths, and the declared Node.js requirement when present. The installed trees can include development dependencies and platform-specific native modules. Provide Node.js and any native libraries those dependencies require on the deployment host. Keep `package.json`, the installed modules, and the files the application reads in their native relative layout.
+
+An enclosing package task can call `gsys build` and then run asset preparation, bundling, or distribution steps of its own. Genesys invokes the compiler directly in production, so a call through another package task or lifecycle script cannot call back into the enclosing task. Projects that rely on a bundler to emit their TypeScript need an emitting tsconfig for this build command. Include generated registration in the native config when the application loads it by filename, as with `workflowsPath`.
+
+For a package with `rootDir: "."`, `outDir: "dist"`, and `workers/orders/index.ts`, install the dependencies and build from the package directory. Then use the build's immutable `root` and the `workers[].start` entry to launch Node directly. For example, run the recorded equivalent of these commands, with the build ID in `build_id`:
+
+```sh
+npm ci
+gsys build .
+cd ".gsys/compile/builds/$build_id/project"
+node dist/workers/orders/index.js
+```
+
+Use the recorded arguments and working directory when the build selects a different entrypoint or package directory. Supply Temporal connection settings and credentials at startup. Publication establishes that compilation and output recording completed. Polling and deployment compatibility require runtime evidence.
 
 Build and start paths are relative to the isolated project/package, so each process uses its corresponding versioned build. The adapter does not set Temporal Build IDs or Worker deployment routing.
 
@@ -68,7 +87,7 @@ Reviewed on 2026-11-16 against released `@temporalio/worker` **1.25.0** and `nex
 - [Published nexus-rpc 0.0.3 package](https://www.npmjs.com/package/nexus-rpc/v/0.0.3).
 - [Native Nexus handler guide](https://docs.temporal.io/develop/typescript/nexus/feature-guide).
 
-Inspection reports the declared Worker dependency and installed version when resolvable. Source review is not a runtime compatibility guarantee or proof that every older SDK version supports these APIs. This repository contains no authored TypeScript Temporal application to build. Validation covers the Genesys native build, type checking and formatting. No tests, test harnesses, assertion self-checks or live Worker executions were added or run.
+Inspection reports the declared Worker dependency and installed version when resolvable. Source review does not establish runtime compatibility with older SDK releases.
 
 Native `setHandler` references and Update validator references are excluded from
 automatic Workflow exports. Const aliases and re-exports resolve through the

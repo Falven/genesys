@@ -36,7 +36,8 @@ A successful build writes these records:
   discovery, native Worker commands and readiness limits, and output locations.
 - `.gsys/compile/builds/<id>/metadata.json`: input file hashes, sizes and modes;
   symlink targets; generated registration hashes; native command and tool-version
-  records; generator file hashes; platform and architecture; and diagnostics.
+  records; generator file hashes; build-host platform and architecture; available
+  native output details; and diagnostics.
 - `.gsys/compile/manifest.json`: the authoritative current manifest, replaced with
   one atomic rename after generation, native compilation, and metadata succeed.
 - `.gsys/compile/metadata.json`: a stable instruction to read the authoritative
@@ -49,6 +50,13 @@ publication. Source and native-output records use paths relative to the snapshot
 manifest and Worker command paths are absolute. Outputs include native imports
 outside `.gsys`, generated registration, native binaries, dependency installation
 outputs, and changed files. Metadata also records files removed by native tooling.
+
+When an SDK can identify native output details, the manifest lists them on the
+corresponding Worker entry. The metadata records the same details by Worker ID.
+Output and dependency paths are relative to the snapshot. Target information
+describes native output, while `buildHost` describes the environment that built
+it. Runtime requirements and dependency locations reflect available evidence.
+Use the SDK documentation for installation and runtime requirements.
 
 Every invocation takes a new snapshot and rebuilds. There is no dependency cache
 invalidation heuristic: changed source, manifests, lockfiles, installed dependency
