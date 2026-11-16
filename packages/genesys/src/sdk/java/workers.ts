@@ -55,6 +55,8 @@ export async function planWorkers(context: AnalysisContext, parsed: Parsed) {
     parsed.maven?.packaging === "jar" &&
     !parsed.maven.parent &&
     !parsed.maven.profiles;
+  const classes = maven ? (outputDirectory ?? "target/classes") : "build/genesys-worker";
+  const libraries = maven ? "target/genesys-dependencies" : classes;
 
   function forType(type: JavaType, entry: SourceEntry) {
     const workers: WorkerProgram[] = [];
@@ -75,6 +77,9 @@ export async function planWorkers(context: AnalysisContext, parsed: Parsed) {
         method.parameters.length === 1 &&
         ["String[]", "java.lang.String[]"].includes(method.parameters[0]!)
       ) {
+        const packagePrefix = type.packageName ? `${type.packageName}.` : "";
+        const mainClass =
+          packagePrefix + type.name.slice(packagePrefix.length).replaceAll(".", "$");
         const worker: WorkerProgram = {
           id: `${context.package.id}:${type.name}`,
           name: entry.workerName ?? type.simple,
@@ -93,7 +98,7 @@ export async function planWorkers(context: AnalysisContext, parsed: Parsed) {
                     "compile",
                     "org.apache.maven.plugins:maven-dependency-plugin:3.9.0:copy-dependencies",
                     "-DincludeScope=runtime",
-                    "-DoutputDirectory=target/genesys-dependencies",
+                    `-DoutputDirectory=${libraries}`,
                   ]
                 : ["--init-script", gradleScript, "gsysPrepareWorker", "-x", "test"],
             },
@@ -101,17 +106,7 @@ export async function planWorkers(context: AnalysisContext, parsed: Parsed) {
           start: {
             executable: javaExecutable(),
             cwd: context.package.root,
-            args: [
-              "-cp",
-              maven
-                ? [outputDirectory ?? "target/classes", "target/genesys-dependencies/*"].join(
-                    delimiter,
-                  )
-                : ["build/genesys-worker", "build/genesys-worker/*"].join(delimiter),
-              type.name.replace(type.packageName ? `${type.packageName}.` : "", "").includes(".")
-                ? `${type.packageName ? `${type.packageName}.` : ""}${type.name.slice(type.packageName ? type.packageName.length + 1 : 0).replaceAll(".", "$")}`
-                : type.name,
-            ],
+            args: ["-cp", [classes, `${libraries}/*`].join(delimiter), mainClass],
           },
           readiness: {
             state: "unavailable",
@@ -138,6 +133,17 @@ export async function planWorkers(context: AnalysisContext, parsed: Parsed) {
             "Java modules require native module-path and launcher assembly; a classpath launch would bypass the authored module model.",
             type,
           );
+        }
+        if (context.mode === "production" && worker.start) {
+          const outputRoot = posix.join(context.package.root, classes).replace(/\/$/, "");
+          worker.nativeOutput = {
+            paths: [outputRoot, posix.join(outputRoot, `${mainClass.replaceAll(".", "/")}.class`)],
+            target: { runtime: "JVM" },
+            runtimeRequirements: [
+              "A JVM compatible with the application bytecode and runtime dependencies.",
+              "Preserve the relative classpath layout in the retained build workspace.",
+            ],
+          };
         }
         workers.push(worker);
       }
@@ -170,6 +176,12 @@ export async function planWorkers(context: AnalysisContext, parsed: Parsed) {
         message: `Several native main classes belong to Worker ${first.name}; supply an executable override. Candidates: ${candidates.map((candidate) => candidate.id).join(", ")}.`,
       });
       const { start: _start, ...unresolved } = first;
+      if (unresolved.nativeOutput) {
+        unresolved.nativeOutput = {
+          ...unresolved.nativeOutput,
+          paths: [...new Set(candidates.flatMap(({ nativeOutput }) => nativeOutput?.paths ?? []))],
+        };
+      }
       return { ...unresolved, id: `${context.package.id}:worker:${directory}` };
     });
     for (const entry of context.entries.filter(
