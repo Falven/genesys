@@ -35,7 +35,7 @@ _Avoid_: Framework configuration, Worker group, Task Queue
 
 **Package context**:
 The module rules, dependencies, and build settings that apply to a definition's source language.
-_Avoid_: Task Queue, runtime selector
+_Avoid_: Task Queue, runtime selector, deployment group
 
 **Manifest**:
 A generated record of discovered definitions or generated registration artifacts.
@@ -56,6 +56,14 @@ _Avoid_: Discovery, Workflow start
 **Worker entrypoint**:
 The native program entry used to start one or more Temporal Workers.
 _Avoid_: Workflow definition, Task Queue, required startup script
+
+**Worker application**:
+A native application whose author determines which Worker programs belong together.
+_Avoid_: SDK Worker, Task Queue, deployment instance
+
+**Application package**:
+A deployable artifact of a Worker application for a specified target environment.
+_Avoid_: Entrypoint, package context, infrastructure configuration
 
 **Development session**:
 The Workers, logs, status, and development operations that one Genesys supervisor owns.
