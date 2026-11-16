@@ -32,9 +32,27 @@ The extension applies to the Worker whose authored options/builder receives it. 
 - A collision is fatal only when a generated aggregate would put the definitions into the same native registration. Identical names on instance types that can be passed to different raw Worker options produce a warning.
 - Automatic package/launch analysis supports one ordinary C# SDK project with literal properties and default source inclusion. Conditional/imported MSBuild settings, project references, custom compile items, multiple target frameworks, and unresolved attributes are explicit tooling limits; they withhold generated code or launch instead of evaluating hooks. F# and VB remain source inventory and explicit native assembly, not C# registration support.
 
-## Build, launch, and readiness
+## Production publish output
 
-For an executable C# project, Roslyn resolves the native `Main` or top-level entrypoint. The build plan uses `dotnet publish <project> -c Release -o .gsys/dotnet/<package hash>` from the isolated project root. Startup uses `dotnet .gsys/dotnet/<package hash>/<assembly>.dll` from that same root. This binds the process to its versioned build; it does not run `dotnet run` or rebuild on startup. Ambiguous Worker names, custom executable output, native AOT, and self-contained launch remain unresolved.
+Run `gsys build` from the project root. For a supported executable C# project, Roslyn resolves the native `Main` or top-level entrypoint. Genesys writes registration into the isolated project before it runs `dotnet publish <project> -c Release -o .gsys/dotnet/<package hash>`. The native project compiles the generated registration into the application assembly and controls the assemblies, native libraries, and content files that publish copies alongside it.
+
+The published build records the output directory, application DLL, runtime configuration, and startup command. In `metadata.json`, `nativeOutput[].target.runtime` records the declared target framework and any explicit runtime identifier (RID). When enabled, the published `<assembly>.deps.json` describes the dependency graph. The artifact inventory lists the files that publish produced.
+
+Automatic production publish supports a framework-dependent DLL with its `<assembly>.runtimeconfig.json`. For a target earlier than .NET 8 with an explicit RID, set `PublishSelfContained=false` or `SelfContained=false` to select this mode. Self-contained, single-file, trimmed, and native AOT output require native publishing outside this automatic build path. Ambiguous Worker names and unsupported project layouts also require explicit native assembly.
+
+## Start the published Worker
+
+From the working directory in the published manifest, run its recorded executable and arguments. For example, substitute the package hash and assembly name from the manifest in this command.
+
+```sh
+dotnet ".gsys/dotnet/<package-hash>/<assembly>.dll"
+```
+
+Install the .NET runtime or shared frameworks specified in the published `<assembly>.runtimeconfig.json`. Keep the publish files together and retain any relative paths the application uses from its working directory. Choose a host compatible with any authored RID and the native assets selected by publish. Supply Temporal connection settings and other application configuration at startup. The author controls deployment and distribution.
+
+A successful publish establishes that native packaging completed. Runtime compatibility, dependency availability on the deployment host, and Worker readiness require separate evidence.
+
+## Readiness
 
 Process startup and `ExecuteAsync` are not proof of polling readiness. The Worker plan records readiness as unavailable until supervision can attribute native heartbeat host/PID/start-time evidence to the process generation and establish successful polling for every intended Worker instance. Unknown dynamic instance coverage remains unknown. Native version retirement is a separate decision; startup never authorizes it.
 
