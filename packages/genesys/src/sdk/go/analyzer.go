@@ -7,13 +7,15 @@ import (
 
 type analyzer struct {
 	root                string
+	production          bool
 	workflowContextType types.Type
 	output              result
 }
 
-func analyze(projectRoot, pkgroot string, entries []entry) result {
+func analyze(projectRoot, pkgroot string, entries []entry, production bool) result {
 	a := analyzer{
-		root: projectRoot,
+		root:       projectRoot,
+		production: production,
 		output: result{
 			Analysis: analysis{
 				Definitions: []definition{},
@@ -55,7 +57,11 @@ func analyze(projectRoot, pkgroot string, entries []entry) result {
 		}
 		a.generate(p, cs)
 	}
-	a.resolveWorkers(entries, byPath, pkgroot)
+	if a.production {
+		a.reportProductionEntrypoints(entries, byPath, index.selectedPaths)
+	} else {
+		a.resolveWorkers(entries, byPath, pkgroot)
+	}
 	a.generateAggregates(pkgs, index.byPackage, byPath)
 	for _, e := range entries {
 		if !index.selectedPaths[e.Path] {

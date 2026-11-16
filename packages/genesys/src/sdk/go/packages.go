@@ -24,8 +24,10 @@ func (a *analyzer) loadPackages(pkgroot string) []*packages.Package {
 		Mode: packages.NeedName | packages.NeedFiles | packages.NeedCompiledGoFiles |
 			packages.NeedImports | packages.NeedDeps | packages.NeedTypes |
 			packages.NeedSyntax | packages.NeedTypesInfo | packages.NeedModule,
-		Tests:      false,
-		BuildFlags: []string{"-mod=readonly"},
+		Tests: false,
+	}
+	if !a.production {
+		config.BuildFlags = []string{"-mod=readonly"}
 	}
 	pkgs, err := packages.Load(config, "./...")
 	if err != nil {
