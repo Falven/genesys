@@ -7,6 +7,7 @@ import { isAbsolute, join, relative, sep } from "node:path";
 import { setTimeout as delay } from "node:timers/promises";
 import { fileURLToPath } from "node:url";
 import { expect, onTestFinished, test } from "vitest";
+import { windowsCommand } from "../packages/genesys/src/windows-command.js";
 import { monitorProcessGroups, signalProcess, supportsProcessGroups } from "./posix-processes.js";
 
 const checkout = fileURLToPath(new URL("../", import.meta.url));
@@ -27,7 +28,22 @@ function startCommand(
   { cwd, env, timeout = commandTimeout, trackGroups }: CommandOptions,
 ) {
   const command = [executable, ...args].join(" ");
-  const batch = process.platform === "win32" && /^(npm|pnpm)$|\.cmd$/i.test(executable);
+  const requested = { executable, args: [...args], cwd: cwd ?? process.cwd() };
+  const invocation =
+    process.platform === "win32" && /^(npm|pnpm)$/i.test(executable)
+      ? windowsCommand(
+          {
+            ...requested,
+            env: Object.fromEntries(
+              Object.entries(env ?? {}).filter(
+                (entry): entry is [string, string] => entry[1] !== undefined,
+              ),
+            ),
+          },
+          true,
+        )
+      : { ...requested, windowsVerbatimArguments: undefined };
+  const batch = process.platform === "win32" && /\.cmd$/i.test(executable);
   if (batch && [executable, ...args].some((value) => /["\r\n]/.test(value)))
     throw new Error(
       "Windows package commands cannot pass quotes or newlines through a batch shim.",
@@ -37,11 +53,11 @@ function startCommand(
     value,
   ]);
   const child = spawn(
-    batch ? (process.env.ComSpec ?? "cmd.exe") : executable,
+    batch ? (process.env.ComSpec ?? "cmd.exe") : invocation.executable,
     // Keep percent signs in paths literal during cmd.exe's expansion.
     batch
       ? ["/d", "/s", "/v:off", "/c", `"${batchArgs.map(([name]) => `"%${name}%"`).join(" ")}"`]
-      : args,
+      : invocation.args,
     {
       cwd,
       env: {
@@ -52,7 +68,7 @@ function startCommand(
       },
       detached: process.platform !== "win32",
       stdio: ["ignore", "pipe", "pipe"],
-      windowsVerbatimArguments: batch,
+      windowsVerbatimArguments: batch || invocation.windowsVerbatimArguments,
     },
   );
   let stdout = "";
