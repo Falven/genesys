@@ -40,8 +40,15 @@ test("gsys retires old Go Workers after replacement readiness and cleans unused 
       await writeFile(join(retained, "main.go"), greeting.replace('"greetings"', '"retained"'));
 
       const endpoint = await temporalEndpoint();
+      const loaderEnvironment = Object.fromEntries(
+        Object.keys(process.env)
+          .filter(
+            (key) => key === "NODE_OPTIONS" || key.startsWith("LD_") || key.startsWith("DYLD_"),
+          )
+          .map((key) => [key, undefined]),
+      );
       const owner = startGsys(["dev", "--", ...endpoint.serverArgs], {
-        env: { ...endpoint.workerEnv, CGO_ENABLED: "0" },
+        env: { ...loaderEnvironment, ...endpoint.workerEnv, CGO_ENABLED: "0" },
       });
       const first = await waitForDevelopmentBuild(owner, project, undefined, "greeting");
       const retainedWorker = await waitForDevelopmentBuild(owner, project, undefined, "retained");
