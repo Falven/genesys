@@ -1,56 +1,32 @@
-import { execFile } from "node:child_process";
 import { fileURLToPath } from "node:url";
-import type {
-  AnalysisContext,
-  AnalysisResult,
-  EmissionResult,
-  NativeAdapter,
-} from "../contracts.js";
+import type { AnalysisContext, AnalysisResult, EmissionResult } from "../contracts.js";
+import { createAnalyzerAdapter } from "./adapter.js";
+import { runTool } from "./tooling.js";
 
-async function inspect(context: AnalysisContext): Promise<AnalysisResult & EmissionResult> {
-  const executable = process.platform === "win32" ? "python" : "python3";
-  const helper = fileURLToPath(new URL("../../sdk/python/analyze.py", import.meta.url));
-  return new Promise((resolve, reject) => {
-    const child = execFile(
-      executable,
-      ["-I", helper],
-      { timeout: 30_000, maxBuffer: 16 * 1024 * 1024, encoding: "utf8" },
-      (error, stdout, stderr) => {
-        if (error) {
-          reject(
-            new Error(
-              `Python static analysis requires Python 3.11 or later: ${stderr || error.message}`,
-            ),
-          );
-          return;
-        }
-        try {
-          resolve(JSON.parse(stdout) as AnalysisResult & EmissionResult);
-        } catch (cause) {
-          reject(new Error("Python static analyzer returned invalid JSON", { cause }));
-        }
-      },
-    );
-    child.stdin?.on("error", reject);
-    child.stdin?.end(
-      JSON.stringify({
-        projectRoot: context.projectRoot,
-        package: context.package,
-        entries: context.entries,
-        sources: Object.fromEntries(context.sources),
-      }),
-    );
+async function inspect(context: AnalysisContext) {
+  const stdout = await runTool({
+    executable: process.platform === "win32" ? "python" : "python3",
+    args: ["-I", fileURLToPath(new URL("../../sdk/python/analyze.py", import.meta.url))],
+    timeout: 30_000,
+    maxBuffer: 16 * 1024 * 1024,
+    input: JSON.stringify({
+      projectRoot: context.projectRoot,
+      package: context.package,
+      entries: context.entries,
+      sources: Object.fromEntries(context.sources),
+    }),
   });
+  let result: AnalysisResult & EmissionResult;
+  try {
+    result = JSON.parse(stdout) as AnalysisResult & EmissionResult;
+  } catch (cause) {
+    throw new Error("Python static analyzer returned invalid JSON", { cause });
+  }
+  const { definitions, diagnostics, workers, artifacts } = result;
+  return {
+    analysis: { definitions, diagnostics, workers },
+    emission: { artifacts, diagnostics },
+  };
 }
 
-export const pythonAdapter: NativeAdapter = {
-  language: "python",
-  async analyze(context) {
-    const { definitions, diagnostics, workers } = await inspect(context);
-    return { definitions, diagnostics, workers };
-  },
-  async emit(context) {
-    const { artifacts, diagnostics } = await inspect(context);
-    return { artifacts, diagnostics };
-  },
-};
+export const pythonAdapter = createAnalyzerAdapter({ language: "python", inspect });

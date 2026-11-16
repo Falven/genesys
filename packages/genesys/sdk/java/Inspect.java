@@ -8,7 +8,6 @@ import javax.tools.*;
 import javax.xml.parsers.DocumentBuilderFactory;
 import org.w3c.dom.*;
 
-/** JDK syntax reader. It never attributes, compiles, loads, or runs application classes. */
 class Inspect {
   static final List<Object> types = new ArrayList<>();
   static Trees trees;

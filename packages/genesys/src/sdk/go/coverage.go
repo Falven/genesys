@@ -436,7 +436,6 @@ func proveCoverage(input coverageInput) (*coverageProof, error) {
 	if newReferences != 1 || dialReferences != 1 || runCalls != 1 || !workflows || (!activities && !localActivityOnly) {
 		return fail("Checked closure does not establish exactly one native construction/run and expected registrations.")
 	}
-	// Bind every selected authored/generated Go file and native module/context input around compilation.
 	files := []string{mainPackage.Module.GoMod, filepath.Join(filepath.Dir(mainPackage.Module.GoMod), "go.sum")}
 	for _, p := range local {
 		files = append(files, p.CompiledGoFiles...)
