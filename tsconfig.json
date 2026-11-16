@@ -31,6 +31,6 @@
     "**/.turbo",
     "**/.vercel",
     "research",
-    "**/.tfx"
+    "**/.gsys"
   ]
 }

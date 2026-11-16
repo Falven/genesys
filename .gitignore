@@ -8,7 +8,7 @@ coverage/
 .output/
 .svelte-kit/
 .vercel/
-.tfx/
+.gsys/
 *.tsbuildinfo
 .pnpm-store/
 .npm/

@@ -13,6 +13,11 @@ Issues and specs live in `.scratch/`.
 
 Use `triage-labels.md` for triage status strings.
 
+## Implementation lifecycle
+
+Implementation tickets retain their triage status and record a separate `State:` of `open`, `claimed`, or `resolved`.
+Resolve a ticket only after its acceptance criteria are complete. Append completion evidence under `## Comments`.
+
 ## Skill operations
 
 When a skill requests publication, create the appropriate Markdown file.

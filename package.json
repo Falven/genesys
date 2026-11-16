@@ -5,22 +5,10 @@
   "description": "Repository tooling for Genesys, a directory convention that generates native Temporal registration.",
   "type": "module",
   "scripts": {
-    "build": "turbo run build --filter='./packages/*'",
-    "build:genesys": "turbo run build --filter=genesys",
-    "dev": "turbo run dev",
-    "typecheck": "turbo run typecheck",
-    "lint": "oxlint --fix",
-    "lint:check": "oxlint",
     "fmt": "oxfmt",
     "fmt:check": "oxfmt --check",
     "check:deps": "syncpack lint",
-    "fix:deps": "syncpack fix-mismatches && syncpack format",
-    "test": "pnpm test:unit && pnpm test:integration",
-    "test:unit": "turbo run test:unit",
-    "test:integration": "turbo run test:integration",
-    "changeset": "changeset",
-    "version-packages": "changeset version",
-    "prepare": "node ./scripts/install-git-hooks.mjs"
+    "fix:deps": "syncpack fix && syncpack format"
   },
   "devDependencies": {
     "@changesets/cli": "3.0.3",
