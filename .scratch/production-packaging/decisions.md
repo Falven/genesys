@@ -4,6 +4,8 @@ This record contains accepted planning decisions through Q8.
 SDK-specific build and output details remain to specify.
 This record does not authorize implementation or deployment.
 
+The [production packaging specification](spec.md) consolidates these decisions for implementation.
+
 ## Accepted decisions
 
 ### Q1: Native Worker applications form the package units

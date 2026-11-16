@@ -195,6 +195,10 @@ Use available native builds, type checks, formatting, and code review. Record ve
 
 ## Further Notes
 
+The [production packaging specification](../production-packaging/spec.md) extends this specification for native application output.
+It clarifies build composition, user-owned application grouping, available metadata, and runtime requirements.
+It does not introduce infrastructure management or change the development-session contract.
+
 This specification consolidates the final accepted decisions and replaces the interview record.
 The local tracker status is `ready-for-agent`.
 The user excluded tests before approving the implementation tickets.
