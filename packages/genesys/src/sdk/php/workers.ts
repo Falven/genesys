@@ -16,13 +16,11 @@ export function workers(
   definitions: Definition[],
 ): AnalysisResult["workers"] {
   const result: AnalysisResult["workers"] = [];
+  const registrationFiles = registrationGroups(context, definitions)
+    .filter((group) => !group.collision)
+    .map(({ root }) => artifactPath(context, root));
   const nativeFiles = [
-    ...new Set([
-      ...context.entries.map((entry) => entry.path),
-      ...registrationGroups(context, definitions)
-        .filter((group) => !group.collision)
-        .map(({ root }) => artifactPath(context, root)),
-    ]),
+    ...new Set([...context.entries.map((entry) => entry.path), ...registrationFiles]),
   ].sort();
   const nestedPackages = nestedPackageRoots(context);
   const configs = [...context.sources].filter(
@@ -132,6 +130,20 @@ export function workers(
           message: `Cannot resolve native RoadRunner launch: ${String(error)}. Preserve native configuration and use an executable override.`,
         });
       }
+    }
+    if (context.mode === "production") {
+      worker.nativeOutput = {
+        paths: [
+          context.package.root,
+          ...registrationFiles,
+          ...(worker.start ? [worker.source.path] : []),
+        ],
+        target: { runtime: "PHP" },
+        runtimeRequirements: [
+          "PHP CLI and the extensions required by the installed Composer packages",
+          "RoadRunner with the Temporal plugin for RoadRunner startup",
+        ],
+      };
     }
     result.push(worker);
   }
