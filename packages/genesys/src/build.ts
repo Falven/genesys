@@ -21,6 +21,7 @@ import { fileURLToPath } from "node:url";
 import { commandEnvironment, windowsCommand } from "./windows-command.js";
 import type { Command, GeneratedArtifact, WorkerProgram } from "./contracts.js";
 import { proveGoWorker } from "./sdk/go.js";
+import { buildRustProgram } from "./sdk/rust/build.js";
 import { writeDiscovery } from "./discovery.js";
 import {
   analyzeProject,
@@ -299,6 +300,13 @@ export async function buildProject(
       ).values(),
     ];
     const goWorkers = project.workers.filter((worker) => worker.language === "go");
+    const rustCommands = new Map<Command, WorkerProgram>();
+    if (mode === "production") {
+      for (const worker of project.workers) {
+        if (worker.language === "rust" && worker.build?.length === 1 && worker.build[0])
+          rustCommands.set(worker.build[0], worker);
+      }
+    }
     const checked = new Set<WorkerProgram>();
     for (const command of commands) {
       const candidates = [];
@@ -307,7 +315,9 @@ export async function buildProject(
           worker.build?.length === 1 && JSON.stringify(worker.build[0]) === JSON.stringify(command),
       ))
         candidates.push({ worker, source: await proveGoWorker(worker) });
-      await runNativeCommand(command, nativeStdout);
+      const rustWorker = rustCommands.get(command);
+      if (rustWorker) await buildRustProgram(root, rustWorker, command);
+      else await runNativeCommand(command, nativeStdout);
       // No other native build runs between typed source proof, exact compilation and binding.
       for (const { worker, source } of candidates) {
         const result =
