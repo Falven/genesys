@@ -1,4 +1,5 @@
-import { join, posix } from "node:path";
+import { realpath } from "node:fs/promises";
+import { isAbsolute, join, posix, relative, resolve, sep } from "node:path";
 import type {
   AnalysisContext,
   Definition,
@@ -32,10 +33,25 @@ export async function workerPrograms({
   const { root, manifests } = context.package;
   const gemfile = manifests.find((path) => posix.basename(path) === "Gemfile");
   const production = context.mode === "production";
-  const bundlePath =
-    production && gemfile && files.some((file) => entries.get(file.path)?.role === "worker")
-      ? await defaultBundlePath(join(context.projectRoot, root))
-      : undefined;
+  const installs =
+    production &&
+    gemfile !== undefined &&
+    files.some((file) => entries.get(file.path)?.role === "worker");
+  const cwd = join(context.projectRoot, root);
+  if (installs && process.env.BUNDLE_GEMFILE) {
+    const gemfilePath = process.env.BUNDLE_GEMFILE;
+    if (isAbsolute(gemfilePath))
+      throw new Error(
+        "Use a relative BUNDLE_GEMFILE inside the selected project for production builds.",
+      );
+    const target = await realpath(resolve(cwd, gemfilePath));
+    const local = relative(context.projectRoot, target);
+    if (isAbsolute(local) || local === ".." || local.startsWith(`..${sep}`))
+      throw new Error(
+        "BUNDLE_GEMFILE must resolve inside the selected project for production builds.",
+      );
+  }
+  const bundlePath = installs ? await defaultBundlePath(cwd) : undefined;
   const bundleDefaults = bundlePath ? { env: { BUNDLE_PATH: bundlePath } } : {};
   const registration = ".gsys/ruby/registration.rb";
   const build = [

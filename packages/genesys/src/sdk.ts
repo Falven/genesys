@@ -79,18 +79,20 @@ export async function analyzeProject(
     }
   }
   project.manifest.analysis = "native-analysis";
-  const names = new Map<string, WorkerProgram>();
+  const production = mode === "production";
+  const programs = new Map<string, WorkerProgram>();
   for (const worker of project.workers) {
-    const previous = names.get(worker.name);
+    const key = production ? worker.id : worker.name;
+    const previous = programs.get(key);
     if (previous)
       project.diagnostics.push({
-        code: "worker.ambiguous-name",
+        code: production ? "worker.ambiguous-id" : "worker.ambiguous-name",
         severity: "error",
         source: worker.source,
         related: [previous.source],
-        message: `Multiple native programs have Worker name ${worker.name}.`,
+        message: `Multiple native programs have Worker ${production ? "ID" : "name"} ${key}.`,
       });
-    names.set(worker.name, worker);
+    programs.set(key, worker);
   }
   return project;
 }

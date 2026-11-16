@@ -62,6 +62,21 @@ export const goAdapter = createAnalyzerAdapter({
       ) {
         throw new Error("Cannot read effective Go build settings.");
       }
+      let buildMode = "default";
+      for (const [flag, doubleQuoted, singleQuoted] of settings.GOFLAGS.matchAll(
+        /"([^"]*)"|'([^']*)'|[^\t\n\r ]+/g,
+      )) {
+        const mode = /^--?buildmode=(.*)$/.exec(doubleQuoted ?? singleQuoted ?? flag);
+        if (mode) buildMode = mode[1]!;
+      }
+      if (
+        context.entries.some((entry) => entry.role === "worker") &&
+        !["default", "exe", "pie"].includes(buildMode)
+      ) {
+        throw new Error(
+          `Production Go Worker output requires an executable build mode. Effective GOFLAGS selects -buildmode=${buildMode}.`,
+        );
+      }
       Object.assign(env, {
         GOOS: settings.GOHOSTOS,
         GOARCH: settings.GOHOSTARCH,

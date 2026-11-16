@@ -42,7 +42,11 @@ async function analyze(context: AnalysisContext): Promise<AnalysisResult> {
       message: `Native ${definition.kind} identity ${definition.identity.name} is repeated in the same Worker registration scope.`,
     });
   }
-  const workers = workerPrograms(context, models, diagnostics);
+  const artifacts =
+    context.mode === "production"
+      ? (await emit({ ...context, analysis: { definitions, diagnostics, workers: [] } })).artifacts
+      : [];
+  const workers = workerPrograms(context, { models, byConfig }, diagnostics, artifacts);
   const uniqueDiagnostics = [
     ...new Map(diagnostics.map((item) => [JSON.stringify(item), item])).values(),
   ];
