@@ -33,9 +33,29 @@ Generated code does not change visibility. Private, package-private, non-static 
 
 Worker entries expose `public static void main(String[])`, including nested classes with native binary names. Several candidate main classes in one named Worker directory produce one unresolved launch plan and a candidate diagnostic; an executable override can select native startup. Distinct Worker directories that share a selector name remain an error. When no conventional main is found, the named Worker and native package cwd remain in the plan for an executable override. Native source errors still fail compilation. Other native launcher forms remain available through the executable override.
 
-For Maven, the adapter prefers the nearest wrapper within the project, then `mvn`. The build compiles main sources and copies runtime dependencies with `maven-dependency-plugin:3.9.0`; it does not run tests. The Java process uses the resolved native `outputDirectory` plus `target/genesys-dependencies/*`. The secure XML reader handles local POM properties and build output paths. Parent models, profiles, non-JAR modules, unresolved/external paths, module-path applications, and reactor-only dependencies require native launcher assembly. The adapter does not execute Maven during inspection to obtain an effective model.
+Run `gsys build /path/to/java-project` to generate registration and prepare the native classpath. The native build compiles registration in the application source set along with the authored code. Maven and Gradle build the main source set without running tests.
 
-For Gradle, the adapter prefers the nearest wrapper within the project, then `gradle`. An emitted native init script adds `gsysPrepareWorker`, which depends on `classes` and copies the evaluated `main.runtimeClasspath` into `build/genesys-worker`. Java starts with that directory and its JARs. The script selects the native Gradle project whose directory matches the package and uses its Java main source set; other project models require native assembly. It runs only during the authorized build. Both build and start commands use the package root inside the retained build snapshot.
+For Maven, the adapter prefers the nearest wrapper within the project, then `mvn`. The build runs `compile` and copies dependencies for the runtime classpath with `maven-dependency-plugin:3.9.0:copy-dependencies`. The classpath contains the native `outputDirectory` for classes and resources, plus the JARs in `target/genesys-dependencies`. The XML reader resolves local POM properties for the output path. Parent models, profiles, non-JAR modules, unresolved or external output paths, module-path applications, and reactor-only dependencies require native launcher assembly. Static inspection reads the local POM without running Maven.
+
+For Gradle, the adapter prefers the nearest wrapper within the project, then `gradle`. The generated init script selects the Gradle project whose directory matches the package. Its `gsysPrepareWorker` task depends on `classes` and copies the evaluated Java `main.runtimeClasspath` to `build/genesys-worker`. The classpath contains that directory for classes and resources, plus its JARs. A conflict between files with the same relative path fails the copy. Source sets and layouts that need a different classpath assembly require native launcher assembly.
+
+For a resolved classpath launch, the build manifest records the Java executable, classpath arguments, and working directory. The production metadata records the classpath output directory and compiled main class paths in `nativeOutput`. The manifest's `artifacts` records include copied JARs and resources from the build. Use a JVM compatible with the application's compiled bytecode and dependencies. Runtime dependencies supplied by the application environment must be available at startup.
+
+The following example uses a Maven project with `target/worker-classes` as its `outputDirectory`. Run the `java` command from the package directory in the retained build, using the `cwd` in the recorded start command. Keep the output directories and their relative paths intact.
+
+```sh
+gsys build /path/to/java-project
+cd "/path/from/the/recorded/start/cwd"
+java -cp 'target/worker-classes:target/genesys-dependencies/*' 'example.temporal.workers.nativeworker.Main$Launcher'
+```
+
+For the same main class in a Gradle build, use the Gradle output on the classpath.
+
+```sh
+java -cp 'build/genesys-worker:build/genesys-worker/*' 'example.temporal.workers.nativeworker.Main$Launcher'
+```
+
+The examples use the POSIX classpath separator. Use the executable and argument boundaries in the recorded command on your platform. Supply runtime settings through your native startup tools. Any additional archive or distribution layout belongs to the native project.
 
 Native wrapper scripts require the platform's normal executable support. Windows batch-wrapper execution and platform-specific classpath behavior were not verified here.
 
