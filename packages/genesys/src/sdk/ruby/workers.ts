@@ -1,8 +1,15 @@
-import { posix } from "node:path";
-import type { AnalysisContext, Definition, Diagnostic, WorkerProgram } from "../../contracts.js";
+import { join, posix } from "node:path";
+import type {
+  AnalysisContext,
+  Definition,
+  Diagnostic,
+  NativeOutput,
+  WorkerProgram,
+} from "../../contracts.js";
+import { runTool } from "../tooling.js";
 import { constant, invocation, token, type ParsedFile } from "./source.js";
 
-export function workerPrograms({
+export async function workerPrograms({
   context,
   files,
   definitions,
@@ -22,18 +29,57 @@ export function workerPrograms({
       .filter((entry) => entry.language === "ruby")
       .map((entry) => [entry.path, entry]),
   );
-  const bundler = context.package.manifests.some((path) => posix.basename(path) === "Gemfile");
+  const { root, manifests } = context.package;
+  const gemfile = manifests.find((path) => posix.basename(path) === "Gemfile");
+  const production = context.mode === "production";
+  const bundlePath =
+    production && gemfile && files.some((file) => entries.get(file.path)?.role === "worker")
+      ? await defaultBundlePath(join(context.projectRoot, root))
+      : undefined;
+  const bundleDefaults = bundlePath ? { env: { BUNDLE_PATH: bundlePath } } : {};
+  const registration = ".gsys/ruby/registration.rb";
   const build = [
-    ...(bundler ? [{ executable: "bundle", args: ["check"], cwd: context.package.root }] : []),
+    ...(gemfile
+      ? [
+          {
+            executable: "bundle",
+            args: [production ? "install" : "check"],
+            cwd: root,
+            ...bundleDefaults,
+          },
+        ]
+      : []),
+    ...(production ? [{ executable: "ruby", args: ["-c", "--", registration], cwd: root }] : []),
     ...files.map((file) => ({
       executable: "ruby",
-      args: ["-c", "--", posix.relative(context.package.root, file.path)],
-      cwd: context.package.root,
+      args: ["-c", "--", posix.relative(root, file.path)],
+      cwd: root,
     })),
   ];
+  const lockfile = posix.join(root, "Gemfile.lock");
+  const dependencies = manifests.map((path) => ({
+    path,
+    kind: path === gemfile ? "bundler-manifest" : "ruby-gemspec",
+  }));
+  if (gemfile && context.sources.has(lockfile))
+    dependencies.push({ path: lockfile, kind: "bundler-lockfile" });
   for (const file of files) {
     const entry = entries.get(file.path);
     if (entry?.role !== "worker") continue;
+    const nativeOutput: NativeOutput = {
+      paths: [
+        file.path,
+        posix.join(root, registration),
+        ...(bundlePath ? [posix.join(root, bundlePath)] : []),
+      ],
+      target: { runtime: "Ruby" },
+      dependencies,
+      runtimeRequirements: [
+        "Ruby version and platform compatible with the application and native gems",
+        ...(gemfile ? ["Bundler and access to any external gem paths selected by Bundler"] : []),
+        "System libraries required by native gems",
+      ],
+    };
     if (!file.runs.length) {
       if (
         files.some(
@@ -59,6 +105,7 @@ export function workerPrograms({
         packageId: context.package.id,
         source: { path: file.path },
         build,
+        ...(production ? { nativeOutput } : {}),
         readiness: {
           state: "unavailable",
           description:
@@ -68,7 +115,7 @@ export function workerPrograms({
       continue;
     }
     const name = entry?.workerName ?? posix.basename(file.path, ".rb");
-    const args = ["--", posix.relative(context.package.root, file.path)];
+    const args = ["--", posix.relative(root, file.path)];
     const worker: WorkerProgram = {
       id: `${context.package.id}:${file.path}`,
       name,
@@ -76,10 +123,12 @@ export function workerPrograms({
       packageId: context.package.id,
       source: { path: file.path, line: file.runs[0] },
       build,
+      ...(production ? { nativeOutput } : {}),
       start: {
-        executable: bundler ? "bundle" : "ruby",
-        args: bundler ? ["exec", "ruby", ...args] : args,
-        cwd: context.package.root,
+        executable: gemfile ? "bundle" : "ruby",
+        args: gemfile ? ["exec", "ruby", ...args] : args,
+        cwd: root,
+        ...bundleDefaults,
       },
       readiness: {
         state: "unavailable",
@@ -96,6 +145,20 @@ export function workerPrograms({
   }
   diagnostics.push(...registrationDiagnostics(files, definitions, resolveName, ownsSource));
   return { workers, diagnostics };
+}
+
+async function defaultBundlePath(cwd: string): Promise<string | undefined> {
+  const settings = await runTool({
+    executable: "ruby",
+    args: ["-S", "bundle", "config", "list", "--parseable"],
+    cwd,
+    timeout: 30_000,
+    maxBuffer: 1024 * 1024,
+  });
+  // Keep Bundler's path selection when the application configures it at any scope.
+  return /^(?:(?:path|path\.system|disable_shared_gems)=|deployment=true\r?$)/m.test(settings)
+    ? undefined
+    : "vendor/bundle";
 }
 
 function registrationDiagnostics(
