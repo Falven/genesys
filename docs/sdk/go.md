@@ -43,6 +43,7 @@ produce an executable. Go source excluded by the target or build tags can be
 absent from the selected build.
 
 Go applies its module, workspace, build tag, target, cgo, and linker settings.
+Production Worker builds require an executable build mode (`default`, `exe`, or `pie`).
 The build record lists the executable path relative to the snapshot and the
 `GOOS` and `GOARCH` target. Use `go version -m <executable>` to read available
 module and build settings from the binary. Native static analysis requires

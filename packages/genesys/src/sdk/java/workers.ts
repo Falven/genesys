@@ -223,7 +223,10 @@ export async function planWorkers(context: AnalysisContext, parsed: Parsed) {
       });
     }
     for (const worker of workers) {
-      if (workers.some((other) => other.id !== worker.id && other.name === worker.name))
+      if (
+        context.mode !== "production" &&
+        workers.some((other) => other.id !== worker.id && other.name === worker.name)
+      )
         diagnostics.push({
           code: "java.entrypoint-ambiguous",
           severity: "error",

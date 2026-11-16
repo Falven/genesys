@@ -71,7 +71,11 @@ export function workers(
       build: [
         {
           executable: "composer",
-          args: ["install", "--no-interaction"],
+          args: [
+            "install",
+            "--no-interaction",
+            ...(context.mode === "production" ? ["--no-scripts"] : []),
+          ],
           cwd: context.package.root,
         },
         ...nativeFiles.map((path) => ({
