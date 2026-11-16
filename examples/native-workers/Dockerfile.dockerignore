@@ -1,0 +1,17 @@
+**
+!package.json
+!pnpm-lock.yaml
+!pnpm-workspace.yaml
+!tsconfig.json
+!GLOSSARY.md
+!docs
+!docs/**
+!packages
+!packages/genesys
+!packages/genesys/**
+!examples
+!examples/native-workers
+!examples/native-workers/**
+**/node_modules
+**/dist
+**/.gsys

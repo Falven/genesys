@@ -1,9 +1,6 @@
 autoDedupe: true
 enableGlobalVirtualStore: false
 
-lockfile:
-  includeResolutionSettings: true
-
 packages:
   - apps/*
   - apps/docs/registry
@@ -15,6 +12,7 @@ packages:
 
 allowBuilds:
   esbuild: true
+  protobufjs: false
 
 catalog:
   "@types/node": "26.6.6"

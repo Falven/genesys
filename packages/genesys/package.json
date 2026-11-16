@@ -1,0 +1,44 @@
+{
+  "name": "@genesys/cli",
+  "version": "0.0.0",
+  "description": "Native Temporal registration, versioned builds, and development supervision",
+  "bin": {
+    "gsys": "dist/cli.js"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "native",
+    "sdk/dotnet/*.cs",
+    "sdk/dotnet/*.csproj",
+    "sdk/java/*.java",
+    "sdk/python/*.py",
+    "sdk/ruby/*.rb",
+    "sdk/rust/analyzer/Cargo.toml",
+    "sdk/rust/analyzer/Cargo.lock",
+    "sdk/rust/analyzer/src/*.rs",
+    "src/sdk/go/*.go",
+    "src/sdk/go/go.mod",
+    "src/sdk/go/go.sum"
+  ],
+  "type": "module",
+  "scripts": {
+    "build": "tsc -p tsconfig.json && node scripts/package-docs.mjs",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "prepack": "pnpm run build"
+  },
+  "dependencies": {
+    "@temporalio/client": "1.25.0",
+    "chokidar": "6.0.0",
+    "php-parser": "3.7.0",
+    "typescript-compiler": "npm:typescript@6.0.3",
+    "yaml": "2.9.1"
+  },
+  "devDependencies": {
+    "@types/node": "catalog:",
+    "typescript": "catalog:"
+  },
+  "engines": {
+    "node": ">=24"
+  }
+}
