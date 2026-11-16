@@ -1,5 +1,10 @@
 ## Agent skills
 
+### Genesys documentation
+
+For application authoring and CLI behavior, start at [the documentation index](docs/README.md).
+Use the [Genesys skill](skills/genesys/SKILL.md) to find the docs for an installed version.
+
 ### Issue tracker
 
 Track issues and specs in `.scratch/`. Read `docs/agents/issue-tracker.md` before creating or updating them.

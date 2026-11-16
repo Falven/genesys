@@ -134,8 +134,8 @@ Worker that serves both Activity names on `greetings`. Keep each immutable build
 while a running process, an external consumer, or a retained Worker version
 requires its files. Successful compilation and installation establish build
 completion. Native polling and retirement require separate evidence.
-See [versioned builds](../../docs/builds/versioned-builds.md) and
-[deployment](../../docs/deployment.md).
+See [versioned builds](../../docs/guides/builds.md) and
+[deployment](../../docs/guides/deployment.md).
 
 ## Run the development session
 
@@ -162,7 +162,7 @@ Ctrl+C stops the owned session. Each Worker uses its native shutdown behavior;
 the Python Activity shutdown interval and Go Worker stop timeout are 30 seconds.
 A direct process manager can use the published `start` commands instead. Preserve
 argument boundaries, `cwd`, and environment values. See
-[deployment](../../docs/deployment.md) for process ownership and build reuse.
+[deployment](../../docs/guides/deployment.md) for process ownership and build reuse.
 
 Build success does not establish polling readiness or authorize retirement.
 Inspection reports unavailable whole-program readiness where native evidence is
