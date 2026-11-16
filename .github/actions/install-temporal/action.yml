@@ -13,7 +13,7 @@ runs:
         case "${RUNNER_OS}-${RUNNER_ARCH}" in
           Linux-X64) platform=linux_amd64; checksum=521f461f3d108902763bb71e85cd0fd382dc9357b59604ae03da6ae734d16890 ;;
           macOS-ARM64) platform=darwin_arm64; checksum=40a76ef7d525e6195b083e4cd50b184cc3bb242fea7f8dda2b9a8698ecbb7379 ;;
-          Windows-X64) platform=windows_amd64; checksum=08dc600ed4e6ed3ecd9ffc135ac8834e1b42ad8db ;;
+          Windows-X64) platform=windows_amd64; checksum=08dc600ed4e6ed3ecd9ffc135ac8834c679a96275a5709acfa4034e1b42ad8db ;;
           *) echo "Unsupported Temporal CLI platform: ${RUNNER_OS}-${RUNNER_ARCH}" >&2; exit 1 ;;
         esac
         dir="$(mktemp -d)"
