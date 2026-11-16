@@ -49,15 +49,25 @@ type command struct {
 	Args       []string `json:"args"`
 	Cwd        string   `json:"cwd"`
 }
+type nativeTarget struct {
+	Platform     string `json:"platform"`
+	Architecture string `json:"architecture"`
+}
+type nativeOutput struct {
+	Paths               []string     `json:"paths"`
+	Target              nativeTarget `json:"target"`
+	RuntimeRequirements []string     `json:"runtimeRequirements"`
+}
 type worker struct {
-	ID        string         `json:"id"`
-	Name      string         `json:"name"`
-	Language  string         `json:"language"`
-	PackageID string         `json:"packageId"`
-	Source    location       `json:"source"`
-	Build     []command      `json:"build"`
-	Start     *command       `json:"start,omitempty"`
-	Readiness map[string]any `json:"readiness"`
+	ID           string         `json:"id"`
+	Name         string         `json:"name"`
+	Language     string         `json:"language"`
+	PackageID    string         `json:"packageId"`
+	Source       location       `json:"source"`
+	Build        []command      `json:"build"`
+	Start        *command       `json:"start,omitempty"`
+	Readiness    map[string]any `json:"readiness"`
+	NativeOutput *nativeOutput  `json:"nativeOutput,omitempty"`
 }
 type artifact struct {
 	Path    string `json:"path"`

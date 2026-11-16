@@ -14,19 +14,72 @@ export const goAdapter = createAnalyzerAdapter({
   language: "go",
   async inspect(context) {
     const helper = fileURLToPath(new URL("../../src/sdk/go/", import.meta.url));
+    const packageRoot = resolve(context.projectRoot, context.package.root);
+    const env = {
+      ...process.env,
+      GOWORK: "off",
+      GOFLAGS: "",
+      GSYS_ANALYSIS_GOWORK: process.env.GOWORK ?? "",
+      GSYS_ANALYSIS_GOFLAGS: process.env.GOFLAGS ?? "",
+    };
+    const production = context.mode === "production";
+    if (production) {
+      // The analyzer runs on the host. Its package loader selects source for the target.
+      const settings: unknown = JSON.parse(
+        await runTool({
+          executable: "go",
+          args: [
+            "env",
+            "-json",
+            "GOHOSTOS",
+            "GOHOSTARCH",
+            "GOOS",
+            "GOARCH",
+            "CGO_ENABLED",
+            "GOFLAGS",
+          ],
+          cwd: packageRoot,
+          timeout: 30_000,
+          maxBuffer: 1024 * 1024,
+        }),
+      );
+      if (
+        !settings ||
+        typeof settings !== "object" ||
+        !("GOHOSTOS" in settings && typeof settings.GOHOSTOS === "string" && settings.GOHOSTOS) ||
+        !(
+          "GOHOSTARCH" in settings &&
+          typeof settings.GOHOSTARCH === "string" &&
+          settings.GOHOSTARCH
+        ) ||
+        !("GOOS" in settings && typeof settings.GOOS === "string" && settings.GOOS) ||
+        !("GOARCH" in settings && typeof settings.GOARCH === "string" && settings.GOARCH) ||
+        !(
+          "CGO_ENABLED" in settings &&
+          (settings.CGO_ENABLED === "0" || settings.CGO_ENABLED === "1")
+        ) ||
+        !("GOFLAGS" in settings && typeof settings.GOFLAGS === "string")
+      ) {
+        throw new Error("Cannot read effective Go build settings.");
+      }
+      Object.assign(env, {
+        GOOS: settings.GOHOSTOS,
+        GOARCH: settings.GOHOSTARCH,
+        CGO_ENABLED: "0",
+        GOFLAGS: " ",
+        GSYS_ANALYSIS_GOOS: settings.GOOS,
+        GSYS_ANALYSIS_GOARCH: settings.GOARCH,
+        GSYS_ANALYSIS_CGO_ENABLED: settings.CGO_ENABLED,
+        GSYS_ANALYSIS_GOFLAGS: settings.GOFLAGS,
+      });
+    }
     const stdout = await runTool({
       executable: "go",
-      args: ["run", ".", context.projectRoot, resolve(context.projectRoot, context.package.root)],
+      args: ["run", ".", context.projectRoot, packageRoot, ...(production ? ["--production"] : [])],
       cwd: helper,
       maxBuffer: 16 * 1024 * 1024,
       timeout: 120_000,
-      env: {
-        ...process.env,
-        GOWORK: "off",
-        GOFLAGS: "",
-        GSYS_ANALYSIS_GOWORK: process.env.GOWORK ?? "",
-        GSYS_ANALYSIS_GOFLAGS: process.env.GOFLAGS ?? "",
-      },
+      env,
       input: JSON.stringify(context.entries),
     });
     const result = JSON.parse(stdout) as { analysis: AnalysisResult; emission: EmissionResult };
@@ -81,6 +134,16 @@ export async function proveGoWorker(
       !Object.values(environment).every((value) => typeof value === "string")
     )
       return { state: "unknown", reason: "Effective native Go build settings are unavailable." };
+    if (
+      ("GOOS" in environment &&
+        "GOHOSTOS" in environment &&
+        environment.GOOS !== environment.GOHOSTOS) ||
+      ("GOARCH" in environment &&
+        "GOHOSTARCH" in environment &&
+        environment.GOARCH !== environment.GOHOSTARCH)
+    ) {
+      return { state: "unknown", reason: "Coverage requires the host target." };
+    }
     const stdout = await runTool({
       executable: "go",
       args: ["run", ".", "--coverage"],

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"net/url"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -20,12 +21,24 @@ func (a *analyzer) addWorker(p *packages.Package, e entry, pkgroot string) {
 	if e.WorkerName == "" {
 		return
 	}
-	r := relative(pkgroot, filepath.Dir(filepath.Join(a.root, e.Path)))
+	programDirectory := filepath.Dir(filepath.Join(a.root, e.Path))
+	r := relative(pkgroot, programDirectory)
 	target := "./" + r
 	if r == "." {
 		target = "."
 	}
-	binary := filepath.Join(a.root, ".gsys", "native", "go", strings.ReplaceAll(e.PackageID, ":", "_"), e.WorkerName)
+	name := e.WorkerName
+	binaryName := name
+	outputDirectory := strings.ReplaceAll(e.PackageID, ":", "_")
+	if a.production {
+		if nested := relative(filepath.Join(a.root, workerDirectory(e)), programDirectory); nested != "." {
+			name += "/" + nested
+		}
+		binaryName = url.PathEscape(name)
+		// Windows trims the trailing dot in the root module's package ID.
+		outputDirectory += "_pkg"
+	}
+	binary := filepath.Join(a.root, ".gsys", "native", "go", outputDirectory, binaryName)
 	goos := os.Getenv("GOOS")
 	if goos == "" {
 		goos = runtime.GOOS
@@ -33,7 +46,36 @@ func (a *analyzer) addWorker(p *packages.Package, e entry, pkgroot string) {
 	if goos == "windows" {
 		binary += ".exe"
 	}
-	a.output.Analysis.Workers = append(a.output.Analysis.Workers, worker{ID: e.PackageID + ":" + p.PkgPath, Name: e.WorkerName, Language: "go", PackageID: e.PackageID, Source: location{Path: e.Path}, Build: []command{{"go", []string{"build", "-o", binary, target}, pkgroot}}, Start: &command{binary, []string{}, pkgroot}, Readiness: map[string]any{"state": "unavailable", "description": "Attributed native Worker heartbeats and successful polling establish observed-instance readiness. Complete Worker coverage is unknown for arbitrary Go programs. Process creation and Start/Run return do not establish program readiness.", "evidence": []string{"native heartbeat host/PID/start time", "native successful task polling", "complete intended Worker coverage required"}}})
+	plan := worker{ID: e.PackageID + ":" + p.PkgPath, Name: name, Language: "go", PackageID: e.PackageID, Source: location{Path: e.Path}, Build: []command{{"go", []string{"build", "-o", binary, target}, pkgroot}}, Start: &command{binary, []string{}, pkgroot}, Readiness: map[string]any{"state": "unavailable", "description": "Attributed native Worker heartbeats and successful polling establish observed-instance readiness. Complete Worker coverage is unknown for arbitrary Go programs. Process creation and Start/Run return do not establish program readiness.", "evidence": []string{"native heartbeat host/PID/start time", "native successful task polling", "complete intended Worker coverage required"}}}
+	if a.production {
+		requirements := []string{"Compatible target OS and CPU, plus application runtime files and settings."}
+		if os.Getenv("CGO_ENABLED") == "1" {
+			requirements = append(requirements, "Supply any dynamic libraries required by cgo or native linker settings.")
+		}
+		plan.NativeOutput = &nativeOutput{
+			Paths:               []string{relative(a.root, binary)},
+			Target:              nativeTarget{Platform: goos, Architecture: os.Getenv("GOARCH")},
+			RuntimeRequirements: requirements,
+		}
+	}
+	a.output.Analysis.Workers = append(a.output.Analysis.Workers, plan)
+}
+
+func (a *analyzer) reportProductionEntrypoints(entries []entry, byPath map[string]entry, selectedPaths map[string]bool) {
+	hasEntrypoint := map[string]bool{}
+	for _, w := range a.output.Analysis.Workers {
+		hasEntrypoint[workerDirectory(byPath[w.Source.Path])] = true
+	}
+	for _, e := range entries {
+		if e.Role != "worker" || e.WorkerName == "" || !selectedPaths[e.Path] {
+			continue
+		}
+		directory := workerDirectory(e)
+		if !hasEntrypoint[directory] {
+			a.report("go.worker-entrypoint-unresolved", "error", "No selected main package with func main was found for this named Worker. Provide a native Go entrypoint to produce an executable.", location{Path: e.Path})
+			hasEntrypoint[directory] = true
+		}
+	}
 }
 
 func (a *analyzer) resolveWorkers(entries []entry, byPath map[string]entry, pkgroot string) {
