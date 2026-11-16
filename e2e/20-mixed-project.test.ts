@@ -93,8 +93,8 @@ const packages: Record<Language, PackageFixture> = {
     source: "rust",
     manifests: ["Cargo.toml"],
     workers: [
-      ["genesys-rust-native", "src/main.rs", "cargo"],
-      ["feature-probe", "src/bin/feature_probe.rs", "cargo"],
+      ["genesys-rust-native", "src/main.rs", "genesys-rust-native"],
+      ["feature-probe", "src/bin/feature_probe.rs", "feature-probe"],
     ],
     registration: `${rustRegistration}/7cb028dcb66a522c.rs`,
     nativeOutput: /\/target\/debug\/genesys-rust-native$/,

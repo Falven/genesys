@@ -233,7 +233,11 @@ ENV PATH=/usr/local/go/bin:$PATH
           volumes: [{ type: "bind", source: root, target: root }],
           working_dir: linuxProject,
           user: `${uid}:${gid}`,
-          environment: { HOME: join(root, "linux-home"), CGO_ENABLED: "0" },
+          environment: {
+            HOME: join(root, "linux-home"),
+            CGO_ENABLED: "0",
+            GOMODCACHE: "/tmp/genesys-go-mod",
+          },
         },
       };
       const compose = (args: readonly string[], timeout?: number) =>
@@ -284,7 +288,7 @@ node_modules/.bin/gsys build "$3"`,
         const worker = {
           image: runtimeImage,
           platform,
-          user: "65532:65532",
+          user: `${uid}:${gid}`,
           entrypoint: [build.executable],
           command: build.args,
           working_dir: build.cwd,
