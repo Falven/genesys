@@ -37,7 +37,9 @@ pub(crate) struct Target {
     pub(crate) required_features: Vec<String>,
 }
 #[derive(Serialize, Default)]
+#[serde(rename_all = "camelCase")]
 pub(crate) struct Output {
+    pub(crate) package_name: Option<String>,
     pub(crate) definitions: Vec<Definition>,
     pub(crate) diagnostics: Vec<Diagnostic>,
     pub(crate) targets: Vec<Target>,

@@ -35,13 +35,17 @@ Conditional compilation, generic implementations, trait implementations, reexpor
 
 **Nexus callers and service handlers are distinct.** SDK 1.2.0 exposes Workflow Nexus operation callers but no public Rust Nexus service handler registration API. Nexus source entries therefore receive an SDK capability diagnostic. Genesys does not fabricate a service registration call or count caller operations as service definitions.
 
-## Builds, launch, and observation
+## Production builds and startup
 
-Each native binary receives `cargo build --manifest-path Cargo.toml --bin <name> --target-dir <generated-root>/target`, with required target features. Launch uses `cargo run --quiet` with the same manifest, binary, target directory, and features, followed by `--` for application arguments. Cargo chooses the native target-specific artifact location and runner. The working directory is the package root. The versioned build publisher must rebase the directory and generated-root arguments into the isolated build; launch must use that build's source and artifacts.
+Run `gsys build` from the project root. Genesys writes generated registration into the versioned build before running Cargo in each selected binary's package directory. Cargo compiles the registration that the application includes. The build retains the captured application tree, so distribute any files that the executable reads at startup with the executable.
 
-Cargo honors the application's native configuration. Cross-compilation and custom runners can prevent local process attribution. They do not establish readiness. Neither `Worker::run`, process startup, nor Cargo build success proves successful Temporal polling. Readiness requires native heartbeat attribution to the owned process generation plus fresh poll evidence. Unknown Worker coverage and missing native evidence remain unknown, and never authorize retirement.
+Each selected binary uses `cargo build --manifest-path Cargo.toml --package <package> --bin <name> --target-dir <generated-root>/target --message-format=json-render-diagnostics`, with `--features` for its Cargo `required-features`. Cargo controls default features, dependency resolution, the `dev` profile, target selection, and linking. Set compilation targets with native Cargo settings such as `.cargo/config.toml` or `CARGO_BUILD_TARGET`. Genesys compiles its static analyzer for the host so that the application's target selection can differ from the host.
 
-SDK compilation can require **`protoc`** through `temporalio-protos` and `prost-wkt-types`. This requirement is separate from the bundled static analyzer, which does not require protoc.
+Open `.gsys/compile/manifest.json` and find the program's `nativeOutput.paths`. These paths are relative to the manifest's `root` and come from Cargo's executable reports. Cargo puts explicitly selected targets in target-specific subdirectories. The manifest's `metadataPath` identifies the build metadata, which records the build inputs, tool versions, and native commands. Binary targets identify executable entrypoints. You choose which executables and supporting files to distribute together.
+
+Run the executable directly on a compatible target system. Use the package directory as the working directory and pass the application's usual arguments and runtime settings. The manifest records `start.executable` and `start.cwd` when Cargo reports a single executable. If Cargo reports several, use `nativeOutput.paths` to choose the executable for the destination. Supply any system libraries, dynamic library search paths, and runtime assets that the application requires. The destination needs Cargo or rustc only if its own workflow calls those tools. Development launch continues to use `cargo run --quiet` with the matching binary and feature selection, so Cargo can apply its configured runner.
+
+SDK compilation can require **`protoc`** through `temporalio-protos` and `prost-wkt-types`. The bundled analyzer does not require protoc. A successful build establishes that Cargo produced the recorded executables. Runtime compatibility and readiness require separate evidence. Development readiness requires native heartbeat attribution to the owned process generation and fresh successful poll evidence. Unknown Worker coverage cannot authorize retirement.
 
 ## Verification
 
@@ -60,3 +64,5 @@ The first native compile reported missing protoc. An isolated protoc from `proto
 - [SDK 1.2.0 release package](https://crates.io/crates/temporalio-sdk/1.2.0)
 - [Rust module source and path rules](https://doc.rust-lang.org/reference/items/modules.html)
 - [Cargo target discovery and native options](https://doc.rust-lang.org/cargo/reference/cargo-targets.html)
+- [Cargo executable reports](https://doc.rust-lang.org/cargo/reference/external-tools.html#artifact-messages)
+- [Cargo output directories](https://doc.rust-lang.org/cargo/reference/build-cache.html)

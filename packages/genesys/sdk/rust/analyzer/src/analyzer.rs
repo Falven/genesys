@@ -210,6 +210,7 @@ impl Analyzer {
         let analyzer = Self {
             input,
             output: Output {
+                package_name: Some(package.name),
                 targets: package.targets,
                 sdk: package.sdk,
                 diagnostics: package.diagnostics,
