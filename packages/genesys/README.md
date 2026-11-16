@@ -3,7 +3,8 @@
 `@genesys/cli` provides `gsys` for native Temporal discovery, registration, builds, and development.
 Start with the [documentation](#documentation) for your installation.
 
-Use Node.js 24 or later. To install a Genesys tarball in your npm project, run:
+Use Node.js 24 or later. Install a released version from npm with `npm install @genesys/cli`.
+To install a Genesys tarball in your npm project, run:
 
 ```bash
 npm install /absolute/path/to/genesys-cli.tgz

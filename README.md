@@ -171,6 +171,7 @@ Read [AGENTS.md](AGENTS.md) for repository instructions. The
 [issue tracker guide](docs/agents/issue-tracker.md) covers local issues and specs. Use the
 [end-to-end guide](e2e/README.md) to run integration checks and the
 [SDK adapter maintainer guide](docs/agents/sdk-adapters.md) to change an adapter.
+See [CI and Releases](docs/agents/releases.md) for GitHub checks and npm publishing.
 
 ## Security
 

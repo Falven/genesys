@@ -255,12 +255,19 @@ test("publication records native removals and generated files and rejects links 
     const { project } = fixture;
     await mkdir(join(project, dirname(workersSource)), { recursive: true });
     await mkdir(join(project, "temporal/workflows"), { recursive: true });
+    await mkdir(join(project, "node_modules/typescript/bin"), { recursive: true });
     await writeFile(
       join(project, "package.json"),
       JSON.stringify({
         type: "module",
         main: workersSource,
-        scripts: { build: "node build.mjs" },
+      }),
+    );
+    await writeFile(
+      join(project, "tsconfig.json"),
+      JSON.stringify({
+        compilerOptions: { allowJs: true, module: "NodeNext", rootDir: ".", outDir: "dist" },
+        include: ["temporal/**/*"],
       }),
     );
     await writeFile(join(project, workersSource), "export {};\n");
@@ -270,13 +277,13 @@ test("publication records native removals and generated files and rejects links 
     );
     await writeFile(join(project, "removable.txt"), "authored input\n");
     await writeFile(
-      join(project, "build.mjs"),
-      `import { mkdir, readFile, rm, symlink, writeFile } from "node:fs/promises";
-await mkdir("dist");
-await writeFile("dist/receipt.txt", await readFile("removable.txt"));
-await rm("removable.txt");
+      join(project, "node_modules/typescript/bin/tsc"),
+      `const { cpSync, copyFileSync, rmSync, symlinkSync } = require("node:fs");
+cpSync("temporal", "dist/temporal", { recursive: true });
+copyFileSync("removable.txt", "dist/receipt.txt");
+rmSync("removable.txt");
 if (process.env.GENESYS_TEST_NATIVE_OUTPUT_TARGET) {
-  await symlink(process.env.GENESYS_TEST_NATIVE_OUTPUT_TARGET, "dist/output-link");
+  symlinkSync(process.env.GENESYS_TEST_NATIVE_OUTPUT_TARGET, "dist/output-link");
 }
 `,
     );
@@ -319,7 +326,13 @@ if (process.env.GENESYS_TEST_NATIVE_OUTPUT_TARGET) {
         },
       ]),
       removedInputs: ["removable.txt"],
-      commands: [{ executable: "npm", cwd: first.root, args: ["run", "build"] }],
+      commands: [
+        {
+          executable: "node",
+          cwd: first.root,
+          args: ["node_modules/typescript/bin/tsc", "--build", "--force", "tsconfig.json"],
+        },
+      ],
       environmentSha256: expect.stringMatching(/^[a-f\d]{64}$/),
     });
     expect((first.current + first.metadata).includes(secret)).toBe(false);

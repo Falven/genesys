@@ -216,12 +216,16 @@ function rubyStart(build: unknown) {
   assert("args" in start && Array.isArray(start.args));
   const args: unknown[] = start.args;
   assert(args.every((argument) => typeof argument === "string"));
+  assert("env" in start && start.env && typeof start.env === "object");
+  assert("BUNDLE_PATH" in start.env && typeof start.env.BUNDLE_PATH === "string");
+  const env = { BUNDLE_PATH: start.env.BUNDLE_PATH };
   expect(start).toEqual({
     executable: "bundle",
     args: ["exec", "ruby", "--", executable],
     cwd: join(build.root, packageRoot),
+    env: { BUNDLE_PATH: "vendor/bundle" },
   });
-  return { executable: start.executable, args, cwd: start.cwd };
+  return { executable: start.executable, args, cwd: start.cwd, env };
 }
 
 test("Ruby builds run authored instances, native Signal and interceptor, and refresh generated registrations", async () => {
@@ -312,10 +316,10 @@ test("Ruby builds run authored instances, native Signal and interceptor, and ref
         await connection.close();
       }
 
-      const client = async (cwd: string, workflow: string) => {
+      const client = async ({ cwd, env }: ReturnType<typeof rubyStart>, workflow: string) => {
         const result = await fixture.run("bundle", ["exec", "ruby", "--", "client.rb", workflow], {
           cwd,
-          env: endpoint.workerEnv,
+          env: { ...endpoint.workerEnv, ...env },
           timeout: 30_000,
         });
         expect(result.code).toBe(0);
@@ -325,18 +329,18 @@ test("Ruby builds run authored instances, native Signal and interceptor, and ref
 
       const firstWorker = fixture.start(first.executable, first.args, {
         cwd: first.cwd,
-        env: endpoint.workerEnv,
+        env: { ...endpoint.workerEnv, ...first.env },
       });
-      expect(await client(first.cwd, "RetiredGreeting")).toBe("retired");
+      expect(await client(first, "RetiredGreeting")).toBe("retired");
       firstWorker.signal("SIGINT");
       expect(await firstWorker.wait(30_000)).toMatchObject({ code: 0, signal: null });
 
       const secondWorker = fixture.start(second.executable, second.args, {
         cwd: second.cwd,
-        env: endpoint.workerEnv,
+        env: { ...endpoint.workerEnv, ...second.env },
       });
-      expect(await client(second.cwd, "FreshGreeting")).toBe("fresh");
-      expect(await client(second.cwd, "RubyGreeting")).toEqual([
+      expect(await client(second, "FreshGreeting")).toBe("fresh");
+      expect(await client(second, "RubyGreeting")).toEqual([
         "intercepted(Hello, Genesys)",
         "intercepted(!)",
         "intercepted(explicit)",

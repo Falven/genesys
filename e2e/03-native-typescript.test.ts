@@ -282,7 +282,7 @@ test("the installed TypeScript build preserves native assembly, handlers, Nexus 
     const marker = join(fixture.root, "executed");
     const options = { GENESYS_TS_MARKER: marker };
     const first = await buildWorker(fixture, options);
-    expect(await readFile(marker, "utf8")).toBe("build\n");
+    await expect(access(marker)).rejects.toMatchObject({ code: "ENOENT" });
 
     const generatedWorkflows = "temporal/genesys-workflows.mts";
     const firstWorkflows = await readFile(join(first.cwd, generatedWorkflows), "utf8");
@@ -360,7 +360,7 @@ test("the installed TypeScript build preserves native assembly, handlers, Nexus 
           cause: { message: "east is out of beans" },
         },
       });
-      expect(await readFile(marker, "utf8")).toBe("build\nactivity import\nactivity constructor\n");
+      expect(await readFile(marker, "utf8")).toBe("activity import\nactivity constructor\n");
       await firstWorker.stop();
 
       await writeFile(join(cwd, "task-queue.txt"), `${taskQueue}\n`);

@@ -2,7 +2,7 @@ import { Connection, WorkflowClient } from "@temporalio/client";
 import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
 import { cp, mkdir, readFile, realpath, rename, rm, writeFile } from "node:fs/promises";
-import { dirname, join } from "node:path";
+import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { expect, test } from "vitest";
 import { temporalEndpoint, withFixture } from "./fixture.js";
@@ -62,11 +62,8 @@ function startCommand(build: ReturnType<typeof readLaunchManifest>, name: string
     ({ kind, path }) => kind === "native-output" && path.endsWith(`/target/debug/${name}`),
   );
   if (!output) throw new Error(`Published build is missing the Cargo binary for ${name}`);
-  expect(command).toMatchObject({ executable: "cargo", cwd: build.root });
-  expect(command.args[command.args.indexOf("--bin") + 1]).toBe(name);
-  expect(command.args[command.args.indexOf("--target-dir") + 1]).toBe(
-    join(build.root, dirname(dirname(output.path))),
-  );
+  expect(command).toMatchObject({ executable: join(build.root, output.path), cwd: build.root });
+  expect(command.args).toEqual([]);
   return command;
 }
 
@@ -334,7 +331,6 @@ test("published Rust registration runs private Workflows, shared Activities, and
       expect(generated.join("\n")).not.toContain("register_workflow::<Manual>()");
 
       const probe = startCommand(original, "feature-probe");
-      expect(probe.args).toEqual(expect.arrayContaining(["--features", "probe"]));
       const feature = await fixture.run(probe.executable, probe.args, {
         cwd: probe.cwd,
         env: { ...env, ...probe.env },
