@@ -21,6 +21,8 @@ def plan_workers(
     index: SourceIndex,
     metadata_root: str,
     diagnostics: Diagnostics,
+    *,
+    production: bool,
 ) -> list[dict]:
     workers = []
     scripts = _console_scripts(context)
@@ -57,8 +59,11 @@ def plan_workers(
                 + ". An explicit native startup override remains available.",
                 worker_entries[0][0],
             )
-        else:
-            _configure_commands(worker, choices[0], context, metadata_root, diagnostics)
+        entrypoint = choices[0] if len(choices) == 1 else None
+        if entrypoint or production:
+            _configure_commands(
+                worker, entrypoint, context, metadata_root, diagnostics, production
+            )
         workers.append(worker)
     _resolve_command_paths(workers, context, metadata_root)
     return workers
@@ -114,62 +119,24 @@ def _entrypoints(worker_entries, index, scripts):
     return choices
 
 
-def _configure_commands(worker, entrypoint, context, metadata_root, diagnostics):
+def _configure_commands(
+    worker, entrypoint, context, metadata_root, diagnostics, production
+):
     python = "python" if sys.platform == "win32" else "python3"
-    path = entrypoint.path
-    module_name = entrypoint.module
-    script = entrypoint.script
+    path = entrypoint.path if entrypoint else worker["source"]["path"]
     worker["source"] = {"path": path}
-    env_dir = ".gsys/python-env"
+    uv_lock = context.prefix + "uv.lock" in context.sources
+    poetry_lock = context.prefix + "poetry.lock" in context.sources
+    env_dir = ".venv" if uv_lock or poetry_lock else ".gsys/python-env"
     env_python = env_dir + (
         "/Scripts/python.exe" if sys.platform == "win32" else "/bin/python"
     )
-    worker["build"] = [
-        {"executable": python, "args": ["-m", "venv", env_dir], "cwd": context.root}
-    ]
-    installable = bool(
-        context.config.get("build-system")
-        or context.config.get("project")
-        or "poetry" in context.tool
-        or (context.prefix + "setup.py" in context.sources)
-        or (context.cfg_path in context.sources)
-    )
-    if installable:
-        worker["build"].append(
-            {
-                "executable": env_python,
-                "args": ["-m", "pip", "install", "."],
-                "cwd": context.root,
-            }
-        )
-    elif context.prefix + "requirements.txt" in context.sources:
-        worker["build"].append(
-            {
-                "executable": env_python,
-                "args": ["-m", "pip", "install", "-r", "requirements.txt"],
-                "cwd": context.root,
-            }
-        )
-    else:
-        diagnostics.report(
-            "dependencies-unresolved",
-            "No installable package or requirements.txt can supply the Worker dependencies.",
-            path,
-        )
-    if context.prefix + "uv.lock" in context.sources:
-        env_dir = ".venv"
-        env_python = env_dir + (
-            "/Scripts/python.exe" if sys.platform == "win32" else "/bin/python"
-        )
-        worker["build"] = [
+    if uv_lock:
+        commands = [
             {"executable": "uv", "args": ["sync", "--frozen"], "cwd": context.root}
         ]
-    elif context.prefix + "poetry.lock" in context.sources:
-        env_dir = ".venv"
-        env_python = env_dir + (
-            "/Scripts/python.exe" if sys.platform == "win32" else "/bin/python"
-        )
-        worker["build"] = [
+    elif poetry_lock:
+        commands = [
             {
                 "executable": "poetry",
                 "args": ["install", "--no-interaction"],
@@ -181,16 +148,47 @@ def _configure_commands(worker, entrypoint, context, metadata_root, diagnostics)
                 },
             }
         ]
-    elif (
-        context.prefix + "Pipfile.lock" in context.sources
-        or context.prefix + "Pipfile" in context.sources
-    ):
-        diagnostics.report(
-            "package-manager-unresolved",
-            "Pipenv dependency resolution is not implemented; supply an explicit native startup environment. This is a tooling limit, not a Python SDK limit.",
-            path,
-        )
-    worker["build"].append(
+    else:
+        commands = [
+            {"executable": python, "args": ["-m", "venv", env_dir], "cwd": context.root}
+        ]
+        if (
+            context.config.get("build-system")
+            or context.config.get("project")
+            or "poetry" in context.tool
+            or context.prefix + "setup.py" in context.sources
+            or context.cfg_path in context.sources
+        ):
+            install_args = ["."]
+        elif context.prefix + "requirements.txt" in context.sources:
+            install_args = ["-r", "requirements.txt"]
+        else:
+            install_args = []
+            diagnostics.report(
+                "dependencies-unresolved",
+                "No installable package or requirements.txt can supply the Worker dependencies.",
+                path,
+                severity="error" if production else "warning",
+            )
+        if install_args:
+            commands.append(
+                {
+                    "executable": env_python,
+                    "args": ["-m", "pip", "install", *install_args],
+                    "cwd": context.root,
+                }
+            )
+        if (
+            context.prefix + "Pipfile.lock" in context.sources
+            or context.prefix + "Pipfile" in context.sources
+        ):
+            diagnostics.report(
+                "package-manager-unresolved",
+                "Pipenv dependency resolution is unsupported. Supply dependencies through a supported package manager.",
+                path,
+            )
+    worker["build"] = commands
+    commands.append(
         {
             "executable": env_python,
             "args": [
@@ -202,6 +200,29 @@ def _configure_commands(worker, entrypoint, context, metadata_root, diagnostics)
             "cwd": context.root,
         }
     )
+    if entrypoint:
+        _configure_start(worker, entrypoint, context, metadata_root, env_dir, env_python)
+    if production:
+        python_version = context.config.get("project", {}).get(
+            "requires-python"
+        ) or context.setup_cfg.get("options", "python_requires", fallback=None)
+        environment = context.prefix + env_dir
+        paths = [context.root, metadata_root, environment]
+        if entrypoint:
+            paths.append(context.prefix + worker["start"]["executable"])
+        worker["nativeOutput"] = {
+            "paths": paths,
+            "target": {"runtime": "Python"},
+            "dependencies": [{"path": environment, "kind": "virtual-environment"}],
+            "runtimeRequirements": [
+                "Python " + python_version if isinstance(python_version, str) else "Python",
+                "Preserve the absolute build workspace path and its virtual environment's base interpreter.",
+            ],
+        }
+
+
+def _configure_start(worker, entrypoint, context, metadata_root, env_dir, env_python):
+    script = entrypoint.script
     if script:
         executable = env_dir + (
             "/Scripts/" + script + ".exe"
@@ -212,7 +233,7 @@ def _configure_commands(worker, entrypoint, context, metadata_root, diagnostics)
     else:
         worker["start"] = {
             "executable": env_python,
-            "args": ["-m", module_name],
+            "args": ["-m", entrypoint.module],
             "cwd": context.root,
         }
     worker["start"]["env"] = {

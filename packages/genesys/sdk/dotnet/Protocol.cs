@@ -8,7 +8,8 @@ internal sealed record AnalysisInput(
     PackageContext Package,
     SourceEntry[] Entries,
     Dictionary<string, string> Sources,
-    string Suffix);
+    string Suffix,
+    string? Mode = null);
 
 internal sealed record PackageContext(string Id, string Root, string[] Manifests);
 internal sealed record SourceEntry(string Id, string Path, string Role, string? WorkerName = null);
@@ -36,6 +37,13 @@ internal sealed record Definition(
 
 internal sealed record NativeCommand(string Executable, string[] Args, string Cwd);
 internal sealed record Readiness(string State, string Description, string[] Evidence);
+internal sealed record NativeTarget(string Runtime);
+internal sealed record NativeDependency(string Path, string Kind);
+internal sealed record NativeOutput(
+    string[] Paths,
+    NativeTarget Target,
+    NativeDependency[]? Dependencies,
+    string[] RuntimeRequirements);
 internal sealed record WorkerProgram(
     string Id,
     string Name,
@@ -44,7 +52,8 @@ internal sealed record WorkerProgram(
     SourceLocation Source,
     NativeCommand[] Build,
     NativeCommand Start,
-    Readiness Readiness);
+    Readiness Readiness,
+    NativeOutput? NativeOutput = null);
 
 internal sealed record GeneratedArtifact(string Path, string Content, string Kind);
 internal sealed record AnalysisResult(
