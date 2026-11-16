@@ -25,7 +25,10 @@ export interface EmittedProject {
 }
 
 /** Only internal, known SDK names are used to resolve modules. */
-export async function analyzeProject(projectPath: string): Promise<AnalyzedProject> {
+export async function analyzeProject(
+  projectPath: string,
+  mode?: AnalysisContext["mode"],
+): Promise<AnalyzedProject> {
   const result = await discoverProject(projectPath);
   const project: AnalyzedProject = { ...result, workers: [], packages: [] };
   project.diagnostics = result.diagnostics.filter(
@@ -52,6 +55,7 @@ export async function analyzeProject(projectPath: string): Promise<AnalyzedProje
     const context: AnalysisContext = {
       projectRoot: result.projectRoot,
       package: pkg,
+      ...(mode ? { mode } : {}),
       entries: result.manifest.entries.filter((entry) => entry.packageId === pkg.id),
       sources: result.sources,
     };

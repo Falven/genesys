@@ -113,6 +113,14 @@ export function isGoWorkerCoverage(value: unknown): value is GoWorkerCoverage {
   );
 }
 
+/** Optional native build evidence. Paths are slash-separated and relative to the build root. */
+export interface NativeOutput {
+  paths?: string[];
+  target?: { platform?: string; architecture?: string; runtime?: string };
+  dependencies?: { path: string; kind: string }[];
+  runtimeRequirements?: string[];
+}
+
 export interface WorkerProgram {
   id: string;
   name: string;
@@ -124,6 +132,7 @@ export interface WorkerProgram {
   coverage?: GoWorkerCoverage;
   build?: Command[];
   start?: Command;
+  nativeOutput?: NativeOutput;
   /** Metadata for the supervisor; unknown never authorizes replacement. */
   readiness: {
     state: "supported" | "unavailable";
@@ -135,6 +144,7 @@ export interface WorkerProgram {
 export interface AnalysisContext {
   projectRoot: string;
   package: PackageContext;
+  mode?: "production";
   entries: readonly SourceEntry[];
   /** Static source and package file text keyed by project-relative path. */
   sources: ReadonlyMap<string, string>;

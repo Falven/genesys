@@ -258,6 +258,7 @@ export async function buildProject(
   id: string = randomUUID(),
   excludedFiles: readonly string[] = [],
   nativeStdout: Parameters<typeof runNativeCommand>[1] = "inherit",
+  mode: "production" | "development" = "production",
 ): Promise<BuildResult> {
   const projectRoot = await realpath(resolve(projectPath));
   const compile = join(projectRoot, ".gsys", "compile");
@@ -274,7 +275,7 @@ export async function buildProject(
   try {
     await snapshot(projectRoot, root, new Set(excludedFiles.map(runtimePathKey)));
     const inputs = await inventory(root);
-    const project = await analyzeProject(root);
+    const project = await analyzeProject(root, mode === "production" ? mode : undefined);
     const emitted = await emitProject(project);
     project.diagnostics.push(...emitted.diagnostics);
     if (project.diagnostics.some((item) => item.severity === "error"))
@@ -347,6 +348,14 @@ export async function buildProject(
     const outputs = await inventory(root, projectRoot);
     const originals = new Map(inputs.map((entry) => [entry.path, JSON.stringify(entry)]));
     const outputPaths = new Set(outputs.map(({ path }) => path));
+    const nativeOutput = project.workers.flatMap(({ id, nativeOutput }) => {
+      if (!nativeOutput) return [];
+      for (const path of nativeOutput.paths ?? []) {
+        if (path !== "." && !outputPaths.has(path))
+          throw new Error(`Native build did not produce ${path} for ${id}.`);
+      }
+      return [{ workerId: id, ...nativeOutput }];
+    });
     const emittedKinds = new Map(emitted.artifacts.map(({ path, kind }) => [path, kind]));
     const artifacts = outputs
       .filter((entry) => originals.get(entry.path) !== JSON.stringify(entry))
@@ -400,6 +409,8 @@ export async function buildProject(
       })),
       platform: process.platform,
       architecture: process.arch,
+      buildHost: { platform: process.platform, architecture: process.arch },
+      nativeOutput,
       commands,
       // Hash environment values: credentials and arbitrary application values are not metadata.
       environmentSha256: createHash("sha256")
