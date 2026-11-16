@@ -25,7 +25,13 @@ def main(data):
     sources = SourceIndex(context, diagnostics)
     definitions = NativeDefinitions(context, sources, diagnostics)
     registration = emit_registration(context, sources, definitions, diagnostics)
-    workers = plan_workers(context, sources, registration.metadata_root, diagnostics)
+    workers = plan_workers(
+        context,
+        sources,
+        registration.metadata_root,
+        diagnostics,
+        production=data.get("mode") == "production",
+    )
     diagnostics.report(
         "sdk-version-evidence",
         "Registration APIs inspected at temporalio 1.36.1 and nexus-rpc 1.5.0. Authored dependency resolution and runtime compatibility require the native build; static analysis does not import the SDK.",
