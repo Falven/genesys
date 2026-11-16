@@ -33,8 +33,8 @@ new generated module recorded by inspection/build output.
 
 ## Build and inspect
 
-Use Node.js 24 or newer, pnpm 12.17.0, Go 1.26 or newer, and Python 3.11 or newer.
-From the repository root:
+Use Node.js 24 or newer, pnpm 12.17.0, Go 1.26 or newer, Python 3.11 or newer,
+and `jq`. Run these commands from the repository root.
 
 ```sh
 pnpm install --frozen-lockfile
@@ -44,27 +44,100 @@ node packages/genesys/dist/cli.js inspect examples/mixed-workers
 node packages/genesys/dist/cli.js build examples/mixed-workers
 ```
 
+With the CLI installed, use `gsys build examples/mixed-workers` for the last command.
+
 Inspection reads source and native package metadata. It does not run authored
 code. Before the first build, Go can report the missing generated import as a
 warning. Python can report unresolved registration membership because the Worker
 calls a generated function. The native build is authoritative. An empty Python
 package initializer under `activities` can also report no static definitions.
 
-Build copies both packages into one versioned project, writes generated
-registration, builds the Go executable, and creates a Python virtual environment
-in the nested package. It installs the package and its dependencies and compiles
-the generated Python modules. Dependency installation can execute native build
-code. The SDK versions are pinned; Python transitive dependencies and its build
-backend retain normal package-manager resolution because this example has no lock.
+Both outputs share one versioned project. Go resolves module dependencies from
+`go.mod` and checks their hashes against `go.sum`. It links the generated Workflow
+registration into the `orchestrator` executable. Python uses `venv` and
+`pip install .` in `enrichment/` to install the application and its dependencies.
+The build also compiles the generated Python registration. Dependency installation
+can execute native build code. Both SDK versions are pinned. The Python build
+backend and transitive dependencies follow pip's normal resolution because this
+example has no lockfile.
 
-Read `.gsys/compile/manifest.json` under the example to locate the published
-`manifestPath`. That immutable manifest records both Worker source locations,
-languages, build commands, startup commands, and generated artifacts. Each
-`start.cwd`, executable, and Python `PYTHONPATH` refers to the same versioned build.
-Keep the complete build at that path, including the virtual environment. Do not
-substitute an installed application from the authored package or another build.
+Read the current selector once. Use its immutable `manifestPath` for both Workers.
+The manifest records their build and startup commands and their `nativeOutput`
+records. Output paths are relative to the manifest's `root`. The file at
+`metadataPath` records build inputs, tool versions, and the build host.
 
-## Run the native programs
+```sh
+manifest=$(jq -er '.manifestPath' examples/mixed-workers/.gsys/compile/manifest.json)
+jq '{id, root, metadataPath, workers: [.workers[] | {name, nativeOutput, start}]}' "$manifest"
+```
+
+## Distribute the applications independently
+
+This example publishes `orchestrator` and `greeter` as separate native outputs.
+You choose what to distribute or release together. The workspace, package
+manifests, and shared Task Queue impose no application grouping. If applications
+share a library, declare it through the native package tools and include any local
+source in the selected workspace. Those tools resolve and include dependencies
+according to each application's build settings.
+
+- For `orchestrator`, distribute the Go executable for the recorded platform and
+  architecture. Supply any dynamic libraries required by the selected Go build
+  settings. The executable includes the Workflow and the registration it uses.
+- For `greeter`, keep the published `enrichment/` directory with its source and
+  installed virtual environment, plus the generated registration directory
+  listed in `nativeOutput.paths`. Preserve the workspace's original absolute path
+  and the relative layout. Supply the compatible base Python installation the
+  virtual environment refers to, and the system libraries the installed packages
+  require. The package installed by pip alone omits the generated registration.
+
+An author-owned build task can call `gsys build` and then inspect or stage one
+output. For example, add these commands to a task that records the Go executable's
+module dependencies and build settings for release. The build also works on its own.
+
+```sh
+gsys build examples/mixed-workers &&
+  manifest=$(jq -er '.manifestPath' examples/mixed-workers/.gsys/compile/manifest.json) &&
+  go_exe=$(jq -er '.workers[] | select(.name == "orchestrator") | .start.executable' "$manifest") &&
+  go version -m "$go_exe"
+```
+
+## Start the native programs directly
+
+Use a running Temporal Service and supply its address and namespace at startup.
+The commands below use local defaults. In each terminal, set `manifest` to the
+same immutable path selected above. Use the recorded working directory,
+executable, arguments, and environment for each Worker.
+
+Start `orchestrator`. Its recorded argument list is empty.
+
+```sh
+go_cwd=$(jq -er '.workers[] | select(.name == "orchestrator") | .start.cwd' "$manifest")
+go_exe=$(jq -er '.workers[] | select(.name == "orchestrator") | .start.executable' "$manifest")
+(cd "$go_cwd" && TEMPORAL_ADDRESS=localhost:7233 TEMPORAL_NAMESPACE=default "$go_exe")
+```
+
+Start `greeter`. Read its two recorded arguments separately to preserve their
+boundaries. Its `PYTHONPATH` includes the application source and generated registration.
+
+```sh
+py_cwd=$(jq -er '.workers[] | select(.name == "greeter") | .start.cwd' "$manifest")
+py_exe=$(jq -er '.workers[] | select(.name == "greeter") | .start.executable' "$manifest")
+py_flag=$(jq -er '.workers[] | select(.name == "greeter") | .start.args[0]' "$manifest")
+py_module=$(jq -er '.workers[] | select(.name == "greeter") | .start.args[1]' "$manifest")
+py_path=$(jq -er '.workers[] | select(.name == "greeter") | .start.env.PYTHONPATH' "$manifest")
+(cd "$py_cwd" && TEMPORAL_ADDRESS=localhost:7233 TEMPORAL_NAMESPACE=default \
+  PYTHONPATH="$py_path" "$py_exe" "$py_flag" "$py_module")
+```
+
+These processes run independently. The `Greeting` Workflow needs an Activity
+Worker that serves both Activity names on `greetings`. Keep each immutable build
+while a running process, an external consumer, or a retained Worker version
+requires its files. Successful compilation and installation establish build
+completion. Native polling and retirement require separate evidence.
+See [versioned builds](../../docs/builds/versioned-builds.md) and
+[deployment](../../docs/deployment.md).
+
+## Run the development session
 
 With the Temporal CLI installed, run from the repository root:
 
@@ -98,8 +171,10 @@ coverage or version-retirement evidence keeps previous Workers and builds retain
 
 ## Validation
 
-The CLI type check and native mixed build passed on macOS arm64 with Go 1.27.4
-and Python 3.15.2. The published manifest and generated registration were reviewed.
+The CLI build and native mixed build passed on macOS arm64 with Go 1.27.4
+and Python 3.15.2. Inspection covered the immutable manifest and build metadata,
+the Go executable and its compiled registration, and the Python registration,
+virtual environment, and installed application and dependencies.
 No tests, test harnesses, assertion-based checks, Worker startup, or Temporal
 Workflow executions were run. These checks do not establish runtime compatibility
 on other operating systems or SDK versions.

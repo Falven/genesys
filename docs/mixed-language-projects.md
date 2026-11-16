@@ -57,7 +57,9 @@ prove payload or replay compatibility statically.
 The [Go/Python example](../examples/mixed-workers/README.md) contains a nested
 Python package, one Workflow, two bound Activities, one application-owned Activity
 instance, and two independently launched Workers on one authored Task Queue. Its
-native build uses the same publisher and supervisor plans as every other SDK.
+production build produces a Go executable and a Python installation with
+generated registration in one versioned workspace. The example shows how to
+choose, distribute, and start each output separately.
 
 Inspection identifies language, source, symbol, identity, and package context.
 The published compile manifest adds Worker entrypoints, exact commands, working
