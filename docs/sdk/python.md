@@ -12,7 +12,27 @@ The generator preserves leading underscores and mangles private Activity method 
 
 Package context supports conventional flat and `src` layouts, setuptools `package-dir` and `packages.find.where`, Poetry package source roots, and setup.cfg's uniform `package_dir`. Console entrypoints come from `project.scripts`, Poetry scripts, or setup.cfg `console_scripts`. Otherwise, a module with an `if __name__ == "__main__"` guard or a `__main__.py` is a native executable candidate. More than one candidate in a named Worker directory remains ambiguous. Python module and script names are never inferred from Workflow names or Task Queues.
 
-Native build plans use `uv sync --frozen` when `uv.lock` exists, `poetry install` with an in-project environment when `poetry.lock` exists, or a fresh package-local `.gsys/python-env` with `pip install .`/`pip install -r requirements.txt`. Generated source is compiled with `compileall`. Commands use absolute working directories and interpreter paths derived from the analyzed build workspace. Startup adds only that workspace's source and registration roots to `PYTHONPATH`; it does not launch an installed application copy from the previous build. A build without a dependency lock retains the package manager's normal dependency-resolution limits.
+## Production output
+
+Run `gsys build .` from the selected project. Genesys generates registration in the versioned workspace before it runs native build commands from the Python package directory.
+
+- With `uv.lock`, `uv sync --frozen` installs into `.venv`.
+- With `poetry.lock`, `poetry install --no-interaction` uses an in-project `.venv`.
+- Otherwise, `python3 -m venv .gsys/python-env` creates a fresh environment. Its interpreter runs `pip install .` for an installable package or `pip install -r requirements.txt` for a requirements-based application. Unlocked inputs resolve according to the package manager's rules. A Pipenv-only project needs a supported dependency input for production builds.
+
+The environment's interpreter runs `compileall` over the generated registration. The published record identifies the workspace, package directory, generated registration directory, virtual environment, and native launch executable when available. Build metadata records the commands and available tool versions. The snapshot retains the application source and assets alongside the installed dependencies and generated modules. Keep the package's relative layout and the versioned workspace's absolute path. Console scripts can embed the virtual environment interpreter's absolute path. The environment can also refer to its base Python installation through absolute paths or symbolic links. Supply the compatible Python installation, platform, and system libraries required by the installed packages.
+
+Use `start.cwd`, `start.executable`, `start.args`, and `start.env.PYTHONPATH` from the Worker entry in `.gsys/compile/manifest.json`. For a module entrypoint, the recorded command has this form:
+
+```sh
+cd /absolute/build/workspace/package
+PYTHONPATH="/absolute/build/workspace/package/src:/absolute/build/workspace/.gsys/compile/python/PACKAGE_HASH" \
+  /absolute/build/workspace/package/.gsys/python-env/bin/python -m example.temporal.workers.worker
+```
+
+For an installed console script, run the recorded executable in the environment's `bin` directory (`Scripts` on Windows). If analysis cannot select a unique entrypoint, use the application’s native startup command. Find the source roots in the generated `registration.json` and add those roots and its directory to `PYTHONPATH`. The application's own tooling selects the program, supplies runtime settings, and controls distribution. A successful build confirms the native commands completed and the recorded paths exist. Worker readiness requires runtime evidence.
+
+## Analysis and readiness limits
 
 Valid runtime-created definitions, wildcard re-exports, conditional definitions, definitions local to a function, custom decorators, external service contracts, nonuniform package mappings, Pipenv environments, and dynamic registration expressions can exceed static resolution. Diagnostics preserve these as tooling limits. Explicit native assembly and startup overrides remain available. This adapter does not execute setup.py or arbitrary build-backend code to discover package paths. Builds can execute native build code.
 
