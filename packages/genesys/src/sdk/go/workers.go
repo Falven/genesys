@@ -35,6 +35,8 @@ func (a *analyzer) addWorker(p *packages.Package, e entry, pkgroot string) {
 			name += "/" + nested
 		}
 		binaryName = url.PathEscape(name)
+	}
+	if a.production || runtime.GOOS == "windows" {
 		// Windows trims the trailing dot in the root module's package ID.
 		outputDirectory += "_pkg"
 	}
