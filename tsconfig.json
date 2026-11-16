@@ -30,6 +30,7 @@
     "**/.next",
     "**/.turbo",
     "**/.vercel",
+    "e2e/fixtures",
     "research",
     "**/.gsys"
   ]

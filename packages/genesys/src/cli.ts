@@ -44,7 +44,8 @@ async function main(args: string[]): Promise<void> {
     throw new Error(`Unsupported command or argument.\n${usage}`);
   }
   const path = args[1] ?? process.cwd();
-  const built = args[0] === "build" ? await buildProject(path) : undefined;
+  const built =
+    args[0] === "build" ? await buildProject(path, undefined, undefined, "stderr") : undefined;
   const result = built ? built.project : await analyzeProject(path);
   if (!built) await writeDiscovery(result);
   process.stdout.write(

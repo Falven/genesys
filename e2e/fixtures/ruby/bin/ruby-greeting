@@ -1,0 +1,20 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+require 'json'
+require 'temporalio/worker'
+require_relative '../lib/greeting_options'
+require_relative '../.gsys/ruby/registration'
+
+manifest = JSON.parse(File.read(File.join(__dir__, '../.gsys/ruby/manifest.json')))
+registration = Object.const_get(manifest.fetch('module'))
+
+client = Temporalio::Client.connect(ENV.fetch('TEMPORAL_ADDRESS'), ENV.fetch('TEMPORAL_NAMESPACE'))
+worker = Temporalio::Worker.new(
+  client: client,
+  task_queue: 'ruby-greetings',
+  workflows: registration::WORKFLOWS,
+  activities: [*registration.activities(RubyGreeting::GreetingText.new('Hello')), GreetingOptions::EXPLICIT],
+  interceptors: [GreetingOptions::ActivityInterceptor.new]
+)
+worker.run(shutdown_signals: ['SIGINT', 'SIGTERM'])

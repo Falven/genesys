@@ -1,0 +1,13 @@
+version: "3"
+
+rpc:
+  listen: "tcp://127.0.0.1:${GENESYS_PHP_RPC_PORT:-6001}"
+
+server:
+  command: "php worker.php"
+
+temporal:
+  address: "${TEMPORAL_ADDRESS:-127.0.0.1:7233}"
+  namespace: "${TEMPORAL_NAMESPACE:-default}"
+  activities:
+    num_workers: 1

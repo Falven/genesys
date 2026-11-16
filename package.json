@@ -8,10 +8,12 @@
     "fmt": "oxfmt",
     "fmt:check": "oxfmt --check",
     "check:deps": "syncpack lint",
-    "fix:deps": "syncpack fix && syncpack format"
+    "fix:deps": "syncpack fix && syncpack format",
+    "test:e2e": "vitest run --no-file-parallelism --dir e2e --exclude \"**/fixtures/**\""
   },
   "devDependencies": {
     "@changesets/cli": "3.0.3",
+    "@temporalio/client": "1.25.0",
     "@types/node": "catalog:",
     "oxfmt": "0.78.0",
     "oxlint": "1.93.0",

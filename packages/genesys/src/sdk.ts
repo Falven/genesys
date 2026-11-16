@@ -148,14 +148,17 @@ export async function writeArtifacts(
   }
 }
 
-export async function runNativeCommand(original: Command): Promise<void> {
+export async function runNativeCommand(
+  original: Command,
+  stdout: "inherit" | "stderr" = "inherit",
+): Promise<void> {
   const command = windowsCommand(original, true);
   await new Promise<void>((accept, reject) => {
     const child = spawn(command.executable, command.args, {
       cwd: command.cwd,
       env: commandEnvironment(command),
       windowsVerbatimArguments: command.windowsVerbatimArguments,
-      stdio: "inherit",
+      stdio: ["inherit", stdout === "stderr" ? process.stderr : "inherit", "inherit"],
       shell: false,
     });
     child.once("error", reject);

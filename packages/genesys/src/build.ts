@@ -257,6 +257,7 @@ export async function buildProject(
   projectPath: string,
   id: string = randomUUID(),
   excludedFiles: readonly string[] = [],
+  nativeStdout: Parameters<typeof runNativeCommand>[1] = "inherit",
 ): Promise<BuildResult> {
   const projectRoot = await realpath(resolve(projectPath));
   const compile = join(projectRoot, ".gsys", "compile");
@@ -305,7 +306,7 @@ export async function buildProject(
           worker.build?.length === 1 && JSON.stringify(worker.build[0]) === JSON.stringify(command),
       ))
         candidates.push({ worker, source: await proveGoWorker(worker) });
-      await runNativeCommand(command);
+      await runNativeCommand(command, nativeStdout);
       // No other native build runs between typed source proof, exact compilation and binding.
       for (const { worker, source } of candidates) {
         const result =

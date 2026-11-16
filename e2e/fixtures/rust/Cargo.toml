@@ -1,0 +1,29 @@
+[package]
+name = "genesys-rust-native"
+version = "0.1.0"
+edition = "2024"
+autobins = false
+
+[[bin]]
+name = "genesys-rust-native"
+path = "src/main.rs"
+
+[[bin]]
+name = "feature-probe"
+path = "src/bin/feature_probe.rs"
+required-features = ["probe"]
+
+[features]
+probe = []
+
+[dependencies]
+futures = "0.3"
+temporalio-client = { version = "=1.2.0", default-features = false }
+temporalio-common = "=1.2.0"
+temporalio-macros = "=1.2.0"
+temporalio-sdk = { version = "=1.2.0", default-features = false }
+temporalio-workflow = "=1.2.0"
+tokio = { version = "1.54", features = ["macros", "rt-multi-thread", "signal"] }
+
+[profile.dev]
+debug = 0

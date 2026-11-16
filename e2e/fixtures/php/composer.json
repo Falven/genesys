@@ -1,0 +1,17 @@
+{
+  "name": "genesys/e2e-php",
+  "require": {
+    "temporal/sdk": "2.20"
+  },
+  "autoload": {
+    "classmap": [
+      "src/"
+    ],
+    "files": [
+      "src/markers.php"
+    ]
+  },
+  "scripts": {
+    "pre-install-cmd": "@php -r \"file_put_contents('composer-build-marker', 'installed');\""
+  }
+}

@@ -1,0 +1,6 @@
+plugins { id 'java' }
+repositories { mavenCentral() }
+dependencies { implementation 'io.temporal:temporal-sdk:1.40.0' }
+tasks.withType(JavaCompile).configureEach { options.release = 17 }
+sourceSets.main.resources.srcDir('runtime')
+file('gradle-configured').text = 'evaluated'
