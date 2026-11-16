@@ -21,9 +21,52 @@ Applications that need different native scopes can call package-local `RegisterG
 
 Native `RegisterWorkflow`, `RegisterActivity`, their `WithOptions` forms, and `RegisterNexusService` remain available. Inspection records directly resolved calls, grouped Activity prefix overrides, compile-time string names and receiver scopes separately from generated defaults. A native override in one Worker is never applied to unrelated Workers. Do not register the same definition twice in one scope through both generated and explicit registration. Direct generated calls through a package import also record their registry scope. Repeated known names produce a diagnostic; control flow and native disable-check options prevent an unconditional runtime collision claim. Dynamic options, closures, generic callable instantiations, runtime service names, indirect registry aliases and external or computed registrations retain explicit native assembly and source-linked diagnostics. This is a static-analysis limit, not a Go SDK feature limit.
 
-A `main` function in a named Worker directory supplies a native `go build -o ... ./package` command and the resulting executable. Cwd is the native module directory. A named Worker with no conventional main or several candidate main packages remains as one unresolved launch plan with that cwd for `--worker-exec`; candidate packages are reported, and duplicate selector names across distinct Worker directories still fail. Ordinary source and compile errors still fail. Analyzer inventory travels on stdin rather than a command-line argument. The initial build pipeline writes generated code then invokes native builds; isolated publication is a separate build responsibility. Native package errors fail inspection except unresolved generated symbols and stale generated code that generation can replace. Native compilation remains authoritative for generated calls, signatures and dependency correctness.
+For `gsys dev`, a `main` function in a named Worker directory supplies a native
+`go build -o ... ./package` command and the resulting executable. The native
+module directory is the working directory. A named Worker with no conventional
+main or several candidate main packages needs `--worker-exec`. Analysis reports
+candidate packages when several mains are available. Duplicate selector names
+across distinct Worker directories fail analysis. Native package errors fail
+inspection except when generation can replace missing or stale registration.
+Native compilation checks generated calls, signatures, and dependencies.
 
 Readiness is unavailable at whole-program scope when the full set of Worker instances cannot be proved. An attributed native heartbeat and successful polling can establish readiness for an observed Worker. Process creation, `Start`, `Run` and startup logs are insufficient. Native version retirement remains separate.
+
+## Build and start a native executable
+
+`gsys build` writes registration into the versioned source snapshot, then runs
+`go build -o <executable> ./<package>` for each selected main package under a named
+Worker directory. Each main package produces a separate executable. The Go linker
+includes the registration the program imports and files it embeds with `go:embed`.
+A Worker directory with Go source selected by the target needs a main package to
+produce an executable. Go source excluded by the target or build tags can be
+absent from the selected build.
+
+Go applies its module, workspace, build tag, target, cgo, and linker settings.
+The build record lists the executable path relative to the snapshot and the
+`GOOS` and `GOARCH` target. Use `go version -m <executable>` to read available
+module and build settings from the binary. Native static analysis requires
+`GOFLAGS` without `-toolexec`. For a target that uses cgo, supply the target C
+toolchain at build time and any linked shared libraries at runtime. Other native linker settings
+can also introduce runtime library requirements. The program needs a compatible
+OS and CPU, files it opens at runtime, and its application settings. Those files
+may need to stay at paths expected by the program or its recorded working directory.
+
+From the repository root, build and start the bundled Go example against an
+available Temporal Service. This example uses `jq` to read the recorded command.
+
+```sh
+CGO_ENABLED=0 gsys build examples/native-workers
+manifest=$(jq -er '.manifestPath' examples/native-workers/.gsys/compile/manifest.json)
+worker_cwd=$(jq -er '.workers[] | select(.name == "greeting") | .start.cwd' "$manifest")
+worker_exe=$(jq -er '.workers[] | select(.name == "greeting") | .start.executable' "$manifest")
+(cd "$worker_cwd" && TEMPORAL_ADDRESS=localhost:7233 TEMPORAL_NAMESPACE=default "$worker_exe")
+```
+
+Distribute the executable and the files and libraries your application needs.
+Use your deployment tools to start the executable on the recorded target.
+A successful build confirms compilation. Runtime compatibility and Temporal
+polling require runtime evidence.
 
 ## Bounded retirement coverage
 
