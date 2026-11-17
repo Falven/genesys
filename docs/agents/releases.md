@@ -14,13 +14,11 @@ CI runs the full eight-SDK suite on Linux for release pull requests and pushes t
    release pull request.
 2. Require the **Required checks** status on `main` after GitHub records the first
    CI run. Approve CI on the Changesets pull request if GitHub requests approval.
-3. For the first npm release, create a short-lived granular token named
-   `gsys-first-release`. Give it permission to publish under `@gsys` and
-   bypass two-factor authentication for the automated publish. Store it as the
-   `NPM_BOOTSTRAP_TOKEN` secret in GitHub Actions for `Falven/genesys`.
-4. After the first publication, add a trusted publisher in the npm package
-   settings. Use owner `Falven`, repository `genesys`, and workflow `release.yml`.
-   Enable direct publishing. Remove the bootstrap secret and revoke the token.
+3. In the npm settings for `@gsys/cli`, add a GitHub Actions trusted publisher.
+   Use owner `Falven`, repository `genesys`, and workflow `release.yml`.
+   Leave the environment field empty. Enable `npm publish`.
+4. Publish a version within two days to activate a new connection.
+   If the connection expires, delete it and add it again before the next release.
 
 See the [GitHub Actions settings](https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/enabling-features-for-your-repository/managing-github-actions-settings-for-a-repository)
 and [npm trusted publishing](https://docs.npmjs.com/trusted-publishers/) documentation.
@@ -28,12 +26,12 @@ and [npm trusted publishing](https://docs.npmjs.com/trusted-publishers/) documen
 ## Publish a version
 
 1. Run `pnpm exec changeset` for a change to the published CLI. Commit the changeset
-   with the change. The first changeset prepares version `0.1.0`.
+   with the change.
 2. Wait for CI on `main`. The Release workflow creates or updates a pull request
    with the new version and release notes.
 3. Review the release notes. Merge the release pull request when its checks pass.
    CI runs on the merged commit. Release then publishes that CI tarball to npm
-   and attaches it to a GitHub release.
+   through Trusted Publishing. Release attaches the tarball to a GitHub release.
 
 To start release candidates, run `pnpm exec changeset pre enter rc` and commit
 the change. To return to stable releases, run `pnpm exec changeset pre exit` and
@@ -41,6 +39,6 @@ commit the change. npm serves release candidates under the `rc` tag.
 
 If publishing fails, fix the cause and rerun the Release job while the tested
 commit is current on `main`. The job checks the npm tarball before it creates
-the GitHub release. If `main` advanced and npm already has the version, use the
-original CI run to verify the artifact and create the missing GitHub release
-with that commit and tarball.
+the GitHub release. If `main` advanced and npm has the version, get the tarball
+from the original CI run. Check it against the npm tarball. Create the missing
+GitHub release with the tested commit and the CI tarball.

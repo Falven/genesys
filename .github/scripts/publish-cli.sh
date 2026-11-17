@@ -44,7 +44,7 @@ integrity="sha512-$(openssl dgst -sha512 -binary "$tarball" | openssl base64 -A)
 status="$(curl -sSL --retry 3 --output "$metadata" --write-out '%{http_code}' "$registry_url")"
 if [[ "$status" == 404 ]]; then
   npm publish "$tarball" --access public --tag "$dist_tag"
-  for attempt in {1..24}; do
+  for attempt in {1..60}; do
     status="$(curl -sSL --retry 3 --output "$metadata" --write-out '%{http_code}' "$registry_url")"
     if [[ "$status" != 404 ]]; then
       break
