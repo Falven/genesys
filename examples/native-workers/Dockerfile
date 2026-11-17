@@ -10,7 +10,7 @@ COPY packages/genesys ./packages/genesys
 COPY docs ./docs
 COPY GLOSSARY.md ./
 RUN npm install --global pnpm@12.17.0 && pnpm install --ignore-scripts --frozen-lockfile
-RUN pnpm --filter @genesys/cli build
+RUN pnpm --filter @gsys/cli build
 
 WORKDIR /opt/native-workers
 COPY examples/native-workers/go.mod examples/native-workers/go.sum ./

@@ -15,7 +15,7 @@ These cases also require native Go 1.26.0 or newer, the Temporal CLI, and the
 platform `ps` utility used by `gsys dev`. See [ticket 22](../.scratch/e2e-suite/issues/22-verify-macos-and-linux-package-and-process-boundaries.md)
 for results by OS and architecture. A missing prerequisite fails the selected case.
 
-The runner packs `@genesys/cli` once per case, installs it with npm into a temporary
+The runner packs `@gsys/cli` once per case, installs it with npm into a temporary
 consumer, and uses that consumer's `gsys` executable in a separate application
 directory. Use `pnpm test:e2e` for all local cases. The command runs files in
 sequence because the CLI's packaging script writes to the checkout.

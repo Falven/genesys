@@ -38,7 +38,7 @@ and `jq`. Run these commands from the repository root.
 
 ```sh
 pnpm install --frozen-lockfile
-pnpm --filter @genesys/cli build
+pnpm --filter @gsys/cli build
 (cd examples/mixed-workers && go mod download)
 node packages/genesys/dist/cli.js inspect examples/mixed-workers
 node packages/genesys/dist/cli.js build examples/mixed-workers

@@ -246,7 +246,7 @@ async function prepareFixture(
     ["install", "--no-audit", "--no-fund", "--no-save", "--package-lock=false", tarball],
     { cwd: consumer },
   );
-  const installed = join(consumer, "node_modules", "@genesys", "cli");
+  const installed = join(consumer, "node_modules", "@gsys", "cli");
   const executable = join(
     consumer,
     "node_modules",

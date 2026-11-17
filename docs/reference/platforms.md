@@ -9,7 +9,7 @@ dependencies your Worker application requires. Put the native Temporal CLI on `P
 
 ## Package contents
 
-The `@genesys/cli` package contains the CLI, JavaScript declarations, Go, Java, .NET, Python, Ruby,
+The `@gsys/cli` package contains the CLI, JavaScript declarations, Go, Java, .NET, Python, Ruby,
 and Rust analyzer sources, and the compiled POSIX process anchor. It also includes the Windows
 process helper source, x64 and arm64 executables, and license notices. PHP analysis uses the
 bundled php-parser dependency, and TypeScript analysis uses a pinned compiler dependency. Genesys

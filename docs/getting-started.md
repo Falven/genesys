@@ -15,27 +15,27 @@ source, build the Worker, and run it with a managed Temporal development server.
 
 ## Get the CLI
 
-To install a released version in your npm project, run `npm install @genesys/cli`.
+To install a released version in your npm project, run `npm install @gsys/cli`.
 If you have a Genesys package tarball, install it with the path to that file.
 
 ```bash
 npm install /absolute/path/to/genesys-cli.tgz
 ```
 
-From your npm project, use `node node_modules/@genesys/cli/dist/cli.js` in place of `gsys` in
+From your npm project, use `node node_modules/@gsys/cli/dist/cli.js` in place of `gsys` in
 the examples below. If you already have a global installation, use `gsys` directly.
 
 To build the CLI from source, run these commands from the root of the Genesys checkout.
 
 ```bash
 pnpm install --frozen-lockfile
-pnpm --filter @genesys/cli build
+pnpm --filter @gsys/cli build
 node packages/genesys/dist/cli.js --help
 ```
 
 Use `node /absolute/path/to/genesys/packages/genesys/dist/cli.js` in place of `gsys` in the
 examples below. To create an installable tarball from the same checkout, run
-`pnpm --filter @genesys/cli pack` and use the path it prints in the install command above.
+`pnpm --filter @gsys/cli pack` and use the path it prints in the install command above.
 
 Run `gsys --help` using your CLI to check the installation. The usage lists `inspect`, `build`,
 and `dev`.

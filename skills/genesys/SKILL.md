@@ -12,9 +12,9 @@ It generates native registration, builds isolated versions, and supervises local
 
 Start with the documentation index for the Genesys installation in use.
 
-- Project-local npm dependency. Read `node_modules/@genesys/cli/dist/docs/README.md` from
+- Project-local npm dependency. Read `node_modules/@gsys/cli/dist/docs/README.md` from
   the project that provides the dependency.
-- Global npm installation. Run `npm root --global` and read `@genesys/cli/dist/docs/README.md`
+- Global npm installation. Run `npm root --global` and read `@gsys/cli/dist/docs/README.md`
   under the directory it returns.
 - Genesys source development. Read `docs/README.md` in the checkout you are changing.
 

@@ -66,8 +66,8 @@ jobs:
         uses: changesets/action@8488615a623b1b9c987934bb89eae8af6a946ac1 # v2.1.1
         with:
           pr-base-branch: main
-          pr-title: "chore: release @genesys/cli"
-          commit-message: "chore: release @genesys/cli"
+          pr-title: "chore: release @gsys/cli"
+          commit-message: "chore: release @gsys/cli"
           publish-script: bash .github/scripts/publish-cli.sh
           create-github-releases: false
           push-git-tags: false
