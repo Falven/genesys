@@ -1,6 +1,6 @@
 {
   "name": "@gsys/cli",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "description": "Native Temporal registration, versioned builds, and development supervision",
   "license": "Apache-2.0",
   "repository": {
