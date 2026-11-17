@@ -45,7 +45,7 @@ from the repository root to build Genesys and start the Go example.
 
 ```bash
 pnpm install --frozen-lockfile
-pnpm --filter @genesys/cli build
+pnpm --filter @gsys/cli build
 (cd examples/native-workers && go mod download)
 node packages/genesys/dist/cli.js dev examples/native-workers
 ```
@@ -70,8 +70,8 @@ fails, Genesys keeps the last successful build selected. See [versioned builds](
 To create a project from scratch, follow [Getting Started](docs/getting-started.md).
 
 > [!NOTE]
-> The `@genesys/cli` package includes the `gsys` executable and its documentation in `dist/docs`.
-> Coding agents can read the docs at `node_modules/@genesys/cli/dist/docs`. Install the
+> The `@gsys/cli` package includes the `gsys` executable and its documentation in `dist/docs`.
+> Coding agents can read the docs at `node_modules/@gsys/cli/dist/docs`. Install the
 > [Genesys skill](skills/genesys/) to point your agent to the docs for the CLI version it uses.
 
 ### A minimal example
@@ -162,8 +162,8 @@ run these commands from the repository root.
 
 ```bash
 pnpm install --frozen-lockfile
-pnpm --filter @genesys/cli build
-pnpm --filter @genesys/cli typecheck
+pnpm --filter @gsys/cli build
+pnpm --filter @gsys/cli typecheck
 pnpm fmt:check
 ```
 

@@ -203,7 +203,7 @@ test("installed commands keep complete inspect JSON on stdout and report invocat
     expect(version).toMatchObject({ code: 0, signal: null, stderr: "" });
     expect(version.stdout).toMatch(/^\d+\.\d+\.\d+(?:[-+][\w.-]+)?\n$/);
     const installedPackage: unknown = JSON.parse(
-      await readFile(join(fixture.root, "consumer/node_modules/@genesys/cli/package.json"), "utf8"),
+      await readFile(join(fixture.installed, "package.json"), "utf8"),
     );
     expect(installedPackage).toHaveProperty("version", version.stdout.trim());
     for (const args of [["unknown"], ["inspect", "--unknown"], ["dev", "--unknown"]]) {

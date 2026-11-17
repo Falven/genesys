@@ -1,7 +1,7 @@
 # Genesys Documentation
 
 Genesys uses directory conventions to discover and register native Temporal definitions.
-The npm package is `@genesys/cli`, and its executable is `gsys`.
+The npm package is `@gsys/cli`, and its executable is `gsys`.
 
 ## Find the page for your task
 

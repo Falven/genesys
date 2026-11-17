@@ -35,7 +35,7 @@ jobs:
       - run: pnpm check:deps
       - run: pnpm exec oxlint packages e2e
       - run: pnpm exec tsc --noEmit
-      - run: pnpm --filter @genesys/cli typecheck
+      - run: pnpm --filter @gsys/cli typecheck
       - name: Build and pack the CLI
         run: |
           npm pack ./packages/genesys --json --pack-destination "$RUNNER_TEMP" > "$RUNNER_TEMP/cli-pack.json"

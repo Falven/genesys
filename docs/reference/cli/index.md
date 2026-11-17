@@ -3,7 +3,7 @@ title: "CLI"
 description: "Inspect projects, build native Worker applications, and run development sessions with gsys."
 ---
 
-`gsys` is the executable installed by `@genesys/cli`. Run a command from the project root or pass
+`gsys` is the executable installed by `@gsys/cli`. Run a command from the project root or pass
 a project directory relative to the directory where you run the command. Absolute project paths
 also work. Each command defaults to the current directory.
 

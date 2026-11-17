@@ -14,10 +14,10 @@ CI runs the full eight-SDK suite on Linux for release pull requests and pushes t
    release pull request.
 2. Require the **Required checks** status on `main` after GitHub records the first
    CI run. Approve CI on the Changesets pull request if GitHub requests approval.
-3. For the first npm release, sign in with an account that can publish public
-   packages in the `@genesys` scope. Use a short-lived granular npm token
-   with write access to that scope and permission to bypass two-factor authentication.
-   Store it as the repository Actions secret `NPM_BOOTSTRAP_TOKEN`.
+3. For the first npm release, create a short-lived granular token named
+   `gsys-first-release`. Give it permission to publish under `@gsys` and
+   bypass two-factor authentication for the automated publish. Store it as the
+   `NPM_BOOTSTRAP_TOKEN` secret in GitHub Actions for `Falven/genesys`.
 4. After the first publication, add a trusted publisher in the npm package
    settings. Use owner `Falven`, repository `genesys`, and workflow `release.yml`.
    Enable direct publishing. Remove the bootstrap secret and revoke the token.
