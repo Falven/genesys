@@ -73,4 +73,3 @@ jobs:
           push-git-tags: false
         env:
           GH_TOKEN: ${{ github.token }}
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_BOOTSTRAP_TOKEN }}
